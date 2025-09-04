@@ -4,9 +4,19 @@ from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from jose import jwt
 from datetime import datetime, timedelta
+from pydantic import BaseModel
 
 from app import database, config
 from app.models.user import User
+
+class SignupRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -25,21 +35,21 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
 
 # ---------------- ROUTES ----------------
 @router.post("/signup")
-def signup(name: str, email: str, password: str, db: Session = Depends(database.get_db)):
-    user = db.query(User).filter(User.email == email).first()
+def signup(request: SignupRequest, db: Session = Depends(database.get_db)):
+    user = db.query(User).filter(User.email == request.email).first()
     if user:
         raise HTTPException(status_code=400, detail="Email already registered")
-    hashed_pw = get_password_hash(password)
-    new_user = User(name=name, email=email, password=hashed_pw)
+    hashed_pw = get_password_hash(request.password)
+    new_user = User(name=request.name, email=request.email, password=hashed_pw, role="farmer")
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
     return {"msg": "User created successfully"}
 
 @router.post("/login")
-def login(email: str, password: str, db: Session = Depends(database.get_db)):
-    user = db.query(User).filter(User.email == email).first()
-    if not user or not verify_password(password, user.password):
+def login(request: LoginRequest, db: Session = Depends(database.get_db)):
+    user = db.query(User).filter(User.email == request.email).first()
+    if not user or not verify_password(request.password, user.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     access_token = create_access_token(data={"sub": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
