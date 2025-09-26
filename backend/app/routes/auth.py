@@ -11,8 +11,11 @@ from app.models.user import User
 
 class SignupRequest(BaseModel):
     name: str
-    email: str
+    phone: str
+    email: str | None = None
     password: str
+    state: str
+    language: str
 
 class LoginRequest(BaseModel):
     email: str
@@ -36,11 +39,20 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
 # ---------------- ROUTES ----------------
 @router.post("/signup")
 def signup(request: SignupRequest, db: Session = Depends(database.get_db)):
-    user = db.query(User).filter(User.email == request.email).first()
-    if user:
+    if db.query(User).filter(User.phone == request.phone).first():
+        raise HTTPException(status_code=400, detail="Phone already registered")
+    if request.email and db.query(User).filter(User.email == request.email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
     hashed_pw = get_password_hash(request.password)
-    new_user = User(name=request.name, email=request.email, password=hashed_pw, role="farmer")
+    new_user = User(
+        name=request.name,
+        phone=request.phone,
+        email=request.email,
+        password=hashed_pw,
+        state=request.state,
+        language=request.language,
+        role="farmer"
+    )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
