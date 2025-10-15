@@ -36,6 +36,14 @@ dependencies:
 
   # Cupertino icons for iOS style
   cupertino_icons: ^1.0.8
+  # Flutter localization support
+  flutter_localizations:
+    sdk: flutter
+  
+  #image picker package
+  image_picker: ^0.8.7+4
+
+
 
 dev_dependencies:
   flutter_test:
