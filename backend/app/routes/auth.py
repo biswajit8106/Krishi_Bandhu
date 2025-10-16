@@ -1,7 +1,7 @@
 # backend/app/routes/auth.py
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from passlib.context import CryptContext
+import bcrypt
 from jose import jwt
 from datetime import datetime, timedelta
 from pydantic import BaseModel
@@ -15,20 +15,21 @@ class SignupRequest(BaseModel):
     email: str | None = None
     password: str
     state: str
+    district: str
+    location: str
     language: str
 
 class LoginRequest(BaseModel):
-    email: str
+    identifier: str
     password: str
 
 router = APIRouter()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def get_password_hash(password):
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password[:72].encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
 def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
 def create_access_token(data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()
@@ -50,6 +51,8 @@ def signup(request: SignupRequest, db: Session = Depends(database.get_db)):
         email=request.email,
         password=hashed_pw,
         state=request.state,
+        district=request.district,
+        location=request.location,
         language=request.language,
         role="farmer"
     )
@@ -60,7 +63,9 @@ def signup(request: SignupRequest, db: Session = Depends(database.get_db)):
 
 @router.post("/login")
 def login(request: LoginRequest, db: Session = Depends(database.get_db)):
-    user = db.query(User).filter(User.email == request.email).first()
+    user = db.query(User).filter(
+        (User.email == request.identifier) | (User.phone == request.identifier)
+    ).first()
     if not user or not verify_password(request.password, user.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     access_token = create_access_token(data={"sub": user.email})

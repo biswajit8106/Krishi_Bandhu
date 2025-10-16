@@ -39,9 +39,18 @@ dependencies:
   # Flutter localization support
   flutter_localizations:
     sdk: flutter
-  
+
   #image picker package
   image_picker: ^0.8.7+4
+
+  # Google Fonts
+  google_fonts: ^6.1.0
+
+  # Flutter Animate
+  flutter_animate: ^4.5.0
+
+  # Shared Preferences for storing tokens
+  shared_preferences: ^2.2.2
 
 
 

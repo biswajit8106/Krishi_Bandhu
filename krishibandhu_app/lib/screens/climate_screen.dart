@@ -10,13 +10,29 @@ class ClimateScreen extends StatefulWidget {
 
 class _ClimateScreenState extends State<ClimateScreen> {
   final ApiService apiService = ApiService();
-  String city = "";
   Map<String, dynamic>? weatherData;
   bool loading = false;
 
+  @override
+  void initState() {
+    super.initState();
+    fetchWeather();
+  }
+
   void fetchWeather() async {
     setState(() => loading = true);
-    final result = await apiService.predictClimate(city);
+    // Get token from shared preferences or wherever it's stored
+    // For now, assuming token is passed or retrieved
+    // You might need to adjust this based on how auth is handled in your app
+    String? token = await _getToken();
+    if (token == null) {
+      setState(() => loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please login first"), backgroundColor: Colors.red),
+      );
+      return;
+    }
+    final result = await apiService.predictClimate(token);
     if (result.containsKey("msg")) {
       // Error
       setState(() => loading = false);
@@ -32,6 +48,14 @@ class _ClimateScreenState extends State<ClimateScreen> {
     }
   }
 
+  Future<String?> _getToken() async {
+    // Implement token retrieval logic
+    // This depends on how you store the token in your app
+    // For example, using shared_preferences
+    // return await SharedPreferences.getInstance().then((prefs) => prefs.getString('token'));
+    return null; // Placeholder
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -40,15 +64,6 @@ class _ClimateScreenState extends State<ClimateScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            TextField(
-              decoration: const InputDecoration(labelText: "Enter City"),
-              onChanged: (val) => city = val,
-            ),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: fetchWeather,
-              child: const Text("Get Weather"),
-            ),
             const SizedBox(height: 20),
             if (loading) const CircularProgressIndicator(),
             if (weatherData != null)
