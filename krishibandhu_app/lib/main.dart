@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'screens/login_screen.dart';
+import 'widgets/auth_wrapper.dart';
 
 void main() {
   runApp(MaterialApp(
     debugShowCheckedModeBanner: false,
-    home: LoginScreen(),
+    home: AuthWrapper(),
   ));
 }

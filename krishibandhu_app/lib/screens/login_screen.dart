@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
-import 'dashboard_screen.dart';
+import '../krishi_screens/home_screen.dart';
 import 'signup_screen.dart'; // ✅ Import signup screen
 
 class LoginScreen extends StatefulWidget {
@@ -18,22 +19,24 @@ class _LoginScreenState extends State<LoginScreen> {
   bool loading = false;
 
   void submit() async {
-    final email = emailController.text.trim();
+    final identifier = emailController.text.trim();
     final password = passwordController.text.trim();
-    if (email.isEmpty || password.isEmpty) {
+    if (identifier.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter email and password")),
+        const SnackBar(content: Text("Please enter phone/email and password")),
       );
       return;
     }
     setState(() => loading = true);
-    final result = await apiService.login(email, password);
+    final result = await apiService.login(identifier, password);
     setState(() => loading = false);
     if (result["success"]) {
       final token = result["data"]["access_token"];
+      // Store token in shared preferences
+      await _storeToken(token);
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => DashboardScreen(token: token)),
+        MaterialPageRoute(builder: (_) => HomeScreen(token: token)),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -43,6 +46,11 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
     }
+  }
+
+  Future<void> _storeToken(String token) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('token', token);
   }
 
   void navigateToSignup() {

@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 
 // Define the backend base URL
 // const String baseUrl = "http://10.0.2.2:8000"; // For Android emulator
-const String baseUrl = "http://127.0.0.1:8000"; // For Web/PC
+const String baseUrl = "http://10.57.226.103:8000"; // For Web/PC and mobile devices on same network
 
 class ApiService {
   final http.Client client = http.Client();
@@ -17,6 +17,8 @@ class ApiService {
     String? email,
     required String password,
     required String state,
+    required String district,
+    required String location,
     required String language,
   }) async {
     final url = Uri.parse("$baseUrl/auth/signup");
@@ -30,6 +32,8 @@ class ApiService {
           "email": email,
           "password": password,
           "state": state,
+          "district": district,
+          "location": location,
           "language": language,
         }),
       );
@@ -45,13 +49,13 @@ class ApiService {
   }
 
   // Login
-  Future<Map<String, dynamic>> login(String email, String password) async {
+  Future<Map<String, dynamic>> login(String identifier, String password) async {
     final url = Uri.parse("$baseUrl/auth/login");
     try {
       final response = await http.post(
         url,
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"email": email, "password": password}),
+        body: jsonEncode({"identifier": identifier, "password": password}),
       );
 
       if (response.statusCode == 200) {
@@ -79,10 +83,13 @@ class ApiService {
   }
 
   // Climate Prediction
-  Future<Map<String, dynamic>> predictClimate(String city) async {
+  Future<Map<String, dynamic>> predictClimate(String token) async {
     try {
-      final url = Uri.parse("$baseUrl/climate/predict?city=$city");
-      final response = await client.get(url);
+      final url = Uri.parse("$baseUrl/climate/predict");
+      final response = await client.get(
+        url,
+        headers: {"Authorization": "Bearer $token"},
+      );
       return jsonDecode(response.body);
     } catch (e) {
       return {"msg": "Failed to fetch weather: ${e.toString()}"};
