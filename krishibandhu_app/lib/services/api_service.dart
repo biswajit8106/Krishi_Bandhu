@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 
 // Define the backend base URL
 // const String baseUrl = "http://10.0.2.2:8000"; // For Android emulator
-const String baseUrl = "http://10.57.226.103:8000"; // For Web/PC and mobile devices on same network
+const String baseUrl = "http://10.57.226.103:9999"; // For Web/PC and mobile devices on same network
 
 class ApiService {
   final http.Client client = http.Client();
