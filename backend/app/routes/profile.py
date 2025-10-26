@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app import database
 from app.models.user import User
-from app.utils.auth_utils import get_current_user  # auth_dep की जगह auth_utils से import
+from app.utils.auth_utils import get_current_user  
 
 router = APIRouter()
 
