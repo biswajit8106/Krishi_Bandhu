@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
+import '../screens/login_screen.dart';
 
 class WeatherCard extends StatefulWidget {
   const WeatherCard({super.key});
@@ -15,6 +16,7 @@ class _WeatherCardState extends State<WeatherCard> {
   final ApiService apiService = ApiService();
   Map<String, dynamic>? weatherData;
   bool loading = true;
+  bool unauthenticated = false;
 
   @override
   void initState() {
@@ -26,15 +28,20 @@ class _WeatherCardState extends State<WeatherCard> {
     try {
       // Get token from shared preferences or wherever it's stored
       String? token = await _getToken();
-      if (token != null) {
-        final data = await apiService.predictClimate(token);
+      if (token == null) {
+        // No token: mark unauthenticated so UI can show a login CTA
         setState(() {
-          weatherData = data;
+          unauthenticated = true;
           loading = false;
         });
-      } else {
-        setState(() => loading = false);
+        return;
       }
+
+      final data = await apiService.predictClimate(token);
+      setState(() {
+        weatherData = data;
+        loading = false;
+      });
     } catch (e) {
       setState(() => loading = false);
     }
@@ -56,13 +63,56 @@ class _WeatherCardState extends State<WeatherCard> {
       );
     }
 
-    if (weatherData == null || weatherData!.containsKey("msg")) {
+    if (unauthenticated) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Log in to view weather',
+                style: GoogleFonts.poppins(fontSize: 16, color: Colors.grey[800]),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: 140,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (ctx) => const LoginScreen()),
+                    );
+                  },
+                  child: const Text('Log in'),
+                ),
+              )
+            ],
+          ),
+        ),
+      );
+    }
+    // Treat several shapes from the backend as an error:
+    // - null response
+    // - explicit "msg" key (our older error shape)
+    // - "detail" key (FastAPI auth error)
+    // - { success: false, msg: ... }
+    final bool hasError = weatherData == null ||
+        weatherData!.containsKey('msg') ||
+        weatherData!.containsKey('detail') ||
+        (weatherData!.containsKey('success') && weatherData!['success'] == false);
+
+    if (hasError) {
+      final String message = weatherData == null
+          ? 'Weather data unavailable'
+          : (weatherData!['msg'] ?? weatherData!['detail'] ?? 'Weather data unavailable');
+
       return Card(
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Center(
             child: Text(
-              'Weather data unavailable',
+              message,
               style: GoogleFonts.poppins(
                 fontSize: 16,
                 color: Colors.grey[600],
@@ -101,7 +151,7 @@ class _WeatherCardState extends State<WeatherCard> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '${weatherData!['temperature']}°C',
+                    '${weatherData?['temperature'] ?? '--'}°C',
                     style: GoogleFonts.poppins(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
@@ -110,7 +160,7 @@ class _WeatherCardState extends State<WeatherCard> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Location: ${weatherData!['city']}',
+                    'Location: ${weatherData?['city'] ?? '--'}',
                     style: GoogleFonts.poppins(
                       fontSize: 14,
                       color: Colors.grey[600],
@@ -121,9 +171,9 @@ class _WeatherCardState extends State<WeatherCard> {
             ),
             Column(
               children: [
-                _buildWeatherDetail('Humidity', '${weatherData!['humidity']}%', Icons.water_drop),
+                _buildWeatherDetail('Humidity', '${weatherData?['humidity'] ?? '--'}%', Icons.water_drop),
                 const SizedBox(height: 12),
-                _buildWeatherDetail('Prediction', weatherData!['prediction'] ?? 'Unknown', Icons.wb_cloudy),
+                _buildWeatherDetail('Prediction', weatherData?['prediction'] ?? 'Unknown', Icons.wb_cloudy),
               ],
             ),
           ],

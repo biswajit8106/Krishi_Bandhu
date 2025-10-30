@@ -18,8 +18,9 @@ def _get_forecast_day_name(index: int) -> str:
 def _get_forecast_date(index: int) -> str:
     """Get the date string for forecast"""
     now = datetime.now()
-    date = now if index == 0 else now.replace(day=now.day + index)
-    return f"{date.day}/{date.month}"
+    # Use timedelta instead of replace to avoid invalid day values
+    target_date = now + timedelta(days=index)
+    return f"{target_date.day}/{target_date.month}"
 
 def get_weather(city: str):
     """

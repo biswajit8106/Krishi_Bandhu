@@ -104,7 +104,18 @@ class ApiService {
         url,
         headers: {"Authorization": "Bearer $token"},
       ).timeout(_timeoutDuration);
-      return jsonDecode(response.body);
+
+      final decoded = jsonDecode(response.body);
+      // Normalize responses: if backend returns non-200 (e.g. authentication error)
+      // convert to a {success: false, msg: ...} shape so UI can handle it safely.
+      if (response.statusCode == 200) {
+        return decoded;
+      } else {
+        return {
+          "success": false,
+          "msg": decoded["detail"] ?? decoded["msg"] ?? "Failed to fetch weather (status ${response.statusCode})"
+        };
+      }
     } on TimeoutException {
       return {"success": false, "msg": "Connection timed out. Please check your network."};
     } catch (e) {
@@ -125,6 +136,100 @@ class ApiService {
       return {"success": false, "msg": "Connection timed out. Please check your network."};
     } catch (e) {
       return {"success": false, "msg": "An error occurred: ${e.toString()}"};
+    }
+  }
+
+  // Irrigation Prediction
+  Future<Map<String, dynamic>> predictIrrigation(String token, Map<String, dynamic> body) async {
+    try {
+      final url = Uri.parse("$baseUrl/predict_irrigation");
+      final response = await client.post(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+        body: jsonEncode(body),
+      ).timeout(_timeoutDuration);
+
+      // Try decode
+      final decoded = jsonDecode(response.body);
+      return decoded;
+    } on TimeoutException {
+      return {"success": false, "msg": "Connection timed out. Please check your network."};
+    } catch (e) {
+      return {"success": false, "msg": "An error occurred: ${e.toString()}"};
+    }
+  }
+
+  // Fetch irrigation metadata (crop types, soil types)
+  Future<Map<String, dynamic>> getIrrigationMetadata() async {
+    try {
+      final url = Uri.parse("$baseUrl/irrigation/metadata");
+      final response = await client.get(url).timeout(_timeoutDuration);
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {"success": false, "msg": e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> getIrrigationSchedules(String token) async {
+    try {
+      final url = Uri.parse("$baseUrl/irrigation/schedules");
+      final response = await client.get(url, headers: {"Authorization": "Bearer $token"}).timeout(_timeoutDuration);
+      return {"success": true, "data": jsonDecode(response.body)};
+    } catch (e) {
+      return {"success": false, "msg": e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> createIrrigationSchedule(String token, Map<String, dynamic> body) async {
+    try {
+      final url = Uri.parse("$baseUrl/irrigation/schedules");
+      final response = await client.post(url, headers: {"Content-Type": "application/json", "Authorization": "Bearer $token"}, body: jsonEncode(body)).timeout(_timeoutDuration);
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {"success": false, "msg": e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> getRecentIrrigationEvents(String token) async {
+    try {
+      final url = Uri.parse("$baseUrl/irrigation/events");
+      final response = await client.get(url, headers: {"Authorization": "Bearer $token"}).timeout(_timeoutDuration);
+      return {"success": true, "data": jsonDecode(response.body)};
+    } catch (e) {
+      return {"success": false, "msg": e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> createIrrigationEvent(String token, Map<String, dynamic> body) async {
+    try {
+      final url = Uri.parse("$baseUrl/irrigation/events");
+      final response = await client.post(url, headers: {"Content-Type": "application/json", "Authorization": "Bearer $token"}, body: jsonEncode(body)).timeout(_timeoutDuration);
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {"success": false, "msg": e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> getWaterUsage(String token, {int days = 7}) async {
+    try {
+      final url = Uri.parse("$baseUrl/irrigation/water_usage?days=$days");
+      final response = await client.get(url, headers: {"Authorization": "Bearer $token"}).timeout(_timeoutDuration);
+      return {"success": true, "data": jsonDecode(response.body)};
+    } catch (e) {
+      return {"success": false, "msg": e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> generateAISchedule(String token, Map<String, dynamic> body) async {
+    try {
+      final url = Uri.parse("$baseUrl/irrigation/generate_schedule_ai");
+      final response = await client.post(url, headers: {"Content-Type": "application/json", "Authorization": "Bearer $token"}, body: jsonEncode(body)).timeout(_timeoutDuration);
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {"success": false, "msg": e.toString()};
     }
   }
 }
