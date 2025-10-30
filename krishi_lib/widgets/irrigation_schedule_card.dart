@@ -4,7 +4,6 @@ import '../theme/app_theme.dart';
 
 class IrrigationScheduleCard extends StatelessWidget {
   final String time;
-  final List<String> zones;
   final String duration;
   final bool isEnabled;
   final Function(bool) onToggle;
@@ -12,7 +11,6 @@ class IrrigationScheduleCard extends StatelessWidget {
   const IrrigationScheduleCard({
     super.key,
     required this.time,
-    required this.zones,
     required this.duration,
     required this.isEnabled,
     required this.onToggle,
@@ -57,35 +55,8 @@ class IrrigationScheduleCard extends StatelessWidget {
                 ),
               ],
             ),
+            // Zones removed — schedule applies to whole field/irrigation system.
             const SizedBox(height: 12),
-            Text(
-              'Zones:',
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: zones.map((zone) => Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  zone,
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    color: AppTheme.primaryColor,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              )).toList(),
-            ),
             const SizedBox(height: 12),
             Row(
               children: [

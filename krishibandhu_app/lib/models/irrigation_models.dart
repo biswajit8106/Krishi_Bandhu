@@ -189,3 +189,31 @@ class WaterUsageStats {
     };
   }
 }
+
+class PredictedIrrigationDay {
+  final DateTime day;
+  final int durationMinutes; // predicted irrigation duration in minutes
+  final double waterLitres; // optional predicted water amount in litres
+
+  PredictedIrrigationDay({
+    required this.day,
+    required this.durationMinutes,
+    required this.waterLitres,
+  });
+
+  factory PredictedIrrigationDay.fromJson(Map<String, dynamic> json) {
+    return PredictedIrrigationDay(
+      day: DateTime.parse(json['day'] ?? DateTime.now().toIso8601String()),
+      durationMinutes: json['durationMinutes'] ?? 0,
+      waterLitres: (json['waterLitres'] ?? 0).toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'day': day.toIso8601String(),
+      'durationMinutes': durationMinutes,
+      'waterLitres': waterLitres,
+    };
+  }
+}

@@ -70,10 +70,10 @@ class SoilMoistureChart extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildLegendItem('Zone A', AppTheme.primaryColor),
-                _buildLegendItem('Zone B', AppTheme.infoColor),
-                _buildLegendItem('Zone C', AppTheme.successColor),
-                _buildLegendItem('Zone D', AppTheme.warningColor),
+                _buildLegendItem('Area 1', AppTheme.primaryColor),
+                _buildLegendItem('Area 2', AppTheme.infoColor),
+                _buildLegendItem('Area 3', AppTheme.successColor),
+                _buildLegendItem('Area 4', AppTheme.warningColor),
               ],
             ),
           ],
