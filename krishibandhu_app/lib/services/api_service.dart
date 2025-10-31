@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 // Define the backend base URL
 // const String baseUrl = "http://10.0.2.2:8000"; // For Android emulator
 const String baseUrl = "http://10.15.83.103:9999"; // For Web/PC and mobile devices on same network
+const String localBaseUrl = "https://10.15.83.103:9999"; // For accessing local server over HTTPS
 // const String baseUrl = "http://localhost:9999"; // For devices connected via USB with adb reverse
 
 class ApiService {
