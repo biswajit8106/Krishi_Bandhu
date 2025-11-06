@@ -273,11 +273,10 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisCount: 2,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
-          childAspectRatio: 1.2,
+          childAspectRatio: 1.0,
           children: [
             FeatureCard(
               title: 'Crop Disease Detection',
-              description: 'AI-powered disease identification',
               icon: Icons.eco,
               color: AppTheme.errorColor,
               onTap: () {
@@ -289,7 +288,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             FeatureCard(
               title: 'Weather Prediction',
-              description: '7-day weather forecast',
               icon: Icons.wb_sunny,
               color: AppTheme.warningColor,
               onTap: () {
@@ -301,7 +299,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             FeatureCard(
               title: 'Smart Irrigation',
-              description: 'Automated water management',
               icon: Icons.water_drop,
               color: AppTheme.infoColor,
               onTap: () {
@@ -313,7 +310,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             FeatureCard(
               title: 'Virtual Assistant',
-              description: 'AI farming consultant',
               icon: Icons.smart_toy,
               color: AppTheme.primaryColor,
               onTap: () {

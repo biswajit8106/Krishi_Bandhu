@@ -20,9 +20,26 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
   File? _selectedImage;
   bool _isAnalyzing = false;
   List<DiseaseResult> _diseaseResults = [];
+  String? _selectedCrop;
 
   final ImagePicker _picker = ImagePicker();
   final ApiService apiService = ApiService();
+
+  final List<Map<String, String>> crops = [
+    {"name": "Apple", "asset": "lib/krishi_screens/assets/apple.png", "backend": "apple"},
+    {"name": "Banana", "asset": "lib/krishi_screens/assets/Banana.png", "backend": "banana"},
+    {"name": "Black Gram", "asset": "lib/krishi_screens/assets/Black Gram.png", "backend": "black_gram"},
+    {"name": "Brinjal", "asset": "lib/krishi_screens/assets/brinjal.png", "backend": "brinjal"},
+    {"name": "Chilli", "asset": "lib/krishi_screens/assets/Chilli.png", "backend": "chilli"},
+    {"name": "Grape", "asset": "lib/krishi_screens/assets/Grape.png", "backend": "grape"},
+    {"name": "Maize", "asset": "lib/krishi_screens/assets/Maize.png", "backend": "corn"},
+    {"name": "Potato", "asset": "lib/krishi_screens/assets/Potato.png", "backend": "potato"},
+    {"name": "Rice", "asset": "lib/krishi_screens/assets/Rice.png", "backend": "rice"},
+    {"name": "Soybean", "asset": "lib/krishi_screens/assets/Soybean.png", "backend": "soybean"},
+    {"name": "Sugarcane", "asset": "lib/krishi_screens/assets/Sugarcan.png", "backend": "sugarcane"},
+    {"name": "Tomato", "asset": "lib/krishi_screens/assets/Tamato.png", "backend": "tomato"},
+    {"name": "Wheat", "asset": "lib/krishi_screens/assets/Wheat.png", "backend": "wheat"},
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +64,9 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
             children: [
               _buildHeader(),
               const SizedBox(height: 24),
-              _buildImageSection(),
+              _buildCropSelection(),
+              const SizedBox(height: 24),
+              if (_selectedCrop != null) _buildImageSection(),
               const SizedBox(height: 24),
               if (_diseaseResults.isNotEmpty) _buildResultsSection(),
               const SizedBox(height: 24),
@@ -66,7 +85,10 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppTheme.errorColor.withOpacity(0.1), AppTheme.warningColor.withOpacity(0.1)],
+          colors: [
+            AppTheme.errorColor.withOpacity(0.1),
+            AppTheme.warningColor.withOpacity(0.1),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -97,11 +119,7 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
               ],
             ),
           ),
-          const Icon(
-            Icons.eco,
-            size: 50,
-            color: AppTheme.errorColor,
-          ),
+          const Icon(Icons.eco, size: 50, color: AppTheme.errorColor),
         ],
       ),
     );
@@ -125,7 +143,11 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
             height: 200,
             width: double.infinity,
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey[300]!, width: 2, style: BorderStyle.solid),
+              border: Border.all(
+                color: Colors.grey[300]!,
+                width: 2,
+                style: BorderStyle.solid,
+              ),
               borderRadius: BorderRadius.circular(12),
               color: Colors.grey[50],
             ),
@@ -236,6 +258,90 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
     );
   }
 
+  Widget _buildCropSelection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Select crops',
+          style: GoogleFonts.poppins(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey[800],
+          ),
+        ),
+        const SizedBox(height: 16),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            childAspectRatio: 0.9,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+          ),
+          itemCount: crops.length,
+          itemBuilder: (context, index) {
+            final crop = crops[index];
+            final isSelected = _selectedCrop == crop["name"];
+            return GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedCrop = crop["name"];
+                  _selectedImage = null;
+                  _diseaseResults.clear();
+                });
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppTheme.primaryColor.withOpacity(0.15)
+                      : Colors.white,
+                  border: Border.all(
+                    color: isSelected
+                        ? AppTheme.primaryColor
+                        : Colors.grey[300]!,
+                    width: isSelected ? 2 : 1,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      height: 48,
+                      child: Image.asset(
+                        crop["asset"]!,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) => Icon(
+                          Icons.image_not_supported,
+                          size: 40,
+                          color: Colors.grey[400],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      crop["name"]!,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: isSelected
+                            ? AppTheme.primaryColor
+                            : Colors.grey[800],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
   Widget _buildResultsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -272,13 +378,33 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                _buildDiseaseItem('Rice Blast', 'Fungal disease affecting rice leaves', Icons.warning, AppTheme.errorColor),
+                _buildDiseaseItem(
+                  'Rice Blast',
+                  'Fungal disease affecting rice leaves',
+                  Icons.warning,
+                  AppTheme.errorColor,
+                ),
                 const Divider(),
-                _buildDiseaseItem('Powdery Mildew', 'White powdery coating on leaves', Icons.cloud, AppTheme.warningColor),
+                _buildDiseaseItem(
+                  'Powdery Mildew',
+                  'White powdery coating on leaves',
+                  Icons.cloud,
+                  AppTheme.warningColor,
+                ),
                 const Divider(),
-                _buildDiseaseItem('Leaf Spot', 'Dark spots on plant leaves', Icons.circle, AppTheme.infoColor),
+                _buildDiseaseItem(
+                  'Leaf Spot',
+                  'Dark spots on plant leaves',
+                  Icons.circle,
+                  AppTheme.infoColor,
+                ),
                 const Divider(),
-                _buildDiseaseItem('Root Rot', 'Decay of plant roots', Icons.water_drop, AppTheme.primaryColor),
+                _buildDiseaseItem(
+                  'Root Rot',
+                  'Decay of plant roots',
+                  Icons.water_drop,
+                  AppTheme.primaryColor,
+                ),
               ],
             ),
           ),
@@ -287,7 +413,12 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
     );
   }
 
-  Widget _buildDiseaseItem(String name, String description, IconData icon, Color color) {
+  Widget _buildDiseaseItem(
+    String name,
+    String description,
+    IconData icon,
+    Color color,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -349,7 +480,10 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
                 _buildTipItem('Proper irrigation management', Icons.water_drop),
                 _buildTipItem('Crop rotation practices', Icons.refresh),
                 _buildTipItem('Use disease-resistant varieties', Icons.shield),
-                _buildTipItem('Maintain field hygiene', Icons.cleaning_services),
+                _buildTipItem(
+                  'Maintain field hygiene',
+                  Icons.cleaning_services,
+                ),
               ],
             ),
           ),
@@ -368,10 +502,7 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
           Expanded(
             child: Text(
               tip,
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                color: Colors.grey[700],
-              ),
+              style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[700]),
             ),
           ),
         ],
@@ -389,9 +520,9 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error picking image: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error picking image: $e')));
     }
   }
 
@@ -406,25 +537,46 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
       // Convert image to base64
       final bytes = await _selectedImage!.readAsBytes();
       final base64Image = base64Encode(bytes);
-      final result = await apiService.predictDisease(widget.token, base64Image);
+
+      // Find the backend crop name
+      final selectedCropData = crops.firstWhere(
+        (crop) => crop["name"] == _selectedCrop,
+        orElse: () => {"backend": _selectedCrop!.toLowerCase()},
+      );
+      final backendCrop = selectedCropData["backend"] ?? _selectedCrop!.toLowerCase();
+
+      final result = await apiService.predictDisease(widget.token, backendCrop, base64Image);
+
+      if (result.containsKey('error')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Prediction error: ${result['error']}')),
+        );
+        setState(() {
+          _isAnalyzing = false;
+        });
+        return;
+      }
+
       setState(() {
         _isAnalyzing = false;
-        _diseaseResults = [DiseaseResult(
-          diseaseName: result['disease_name'] ?? 'Unknown Disease',
-          confidence: (result['confidence'] ?? 0.0) * 100,
-          description: result['description'] ?? 'No description available',
-          symptoms: List<String>.from(result['symptoms'] ?? []),
-          treatment: result['treatment'] ?? 'No treatment information available',
-          severity: result['severity'] ?? 'Unknown',
-        )];
+        _diseaseResults = [
+          DiseaseResult(
+            diseaseName: 'Predicted Class: ${result['prediction'] ?? 'Unknown'}',
+            confidence: 100.0, // Model prediction confidence not provided
+            description: 'Disease predicted by AI model for ${_selectedCrop}',
+            symptoms: ['Symptoms not available from model'],
+            treatment: 'Consult local agricultural expert for treatment',
+            severity: 'Severity not determined',
+          ),
+        ];
       });
     } catch (e) {
       setState(() {
         _isAnalyzing = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error analyzing image: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error analyzing image: $e')));
     }
   }
 

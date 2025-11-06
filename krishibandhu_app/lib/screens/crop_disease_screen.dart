@@ -18,6 +18,23 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
   File? _imageFile;
   String? prediction;
   bool loading = false;
+  String? selectedCrop;
+  List<String> availableCrops = [];
+
+  @override
+  void initState() {
+    super.initState();
+    fetchAvailableCrops();
+  }
+
+  Future<void> fetchAvailableCrops() async {
+    final res = await apiService.getAvailableCrops();
+    if (res["crops"] != null) {
+      setState(() {
+        availableCrops = List<String>.from(res["crops"]);
+      });
+    }
+  }
 
   Future<void> pickImage(ImageSource source) async {
     final picked = await _picker.pickImage(source: source);
@@ -26,18 +43,24 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
         _imageFile = File(picked.path);
         prediction = null;
       });
-      uploadAndPredict();
+      if (selectedCrop != null) {
+        uploadAndPredict();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Please select a crop first")),
+        );
+      }
     }
   }
 
   Future<void> uploadAndPredict() async {
-    if (_imageFile == null) return;
+    if (_imageFile == null || selectedCrop == null) return;
     setState(() => loading = true);
 
     final bytes = await _imageFile!.readAsBytes();
     final base64Image = base64Encode(bytes);
 
-    final res = await apiService.predictDisease(widget.token, base64Image);
+    final res = await apiService.predictDisease(widget.token, selectedCrop!, base64Image);
 
     setState(() {
       prediction = res["prediction"] ?? "Could not detect disease";
@@ -53,6 +76,28 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
+            // Crop Selection Dropdown
+            DropdownButtonFormField<String>(
+              value: selectedCrop,
+              hint: const Text("Select Crop"),
+              items: availableCrops.map((crop) {
+                return DropdownMenuItem(
+                  value: crop,
+                  child: Text(crop.toUpperCase()),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  selectedCrop = value;
+                  prediction = null; // Reset prediction when crop changes
+                });
+              },
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: "Crop Type",
+              ),
+            ),
+            const SizedBox(height: 20),
             if (_imageFile != null)
               Image.file(_imageFile!, height: 250),
             const SizedBox(height: 20),
@@ -62,12 +107,12 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       ElevatedButton.icon(
-                        onPressed: () => pickImage(ImageSource.camera),
+                        onPressed: selectedCrop != null ? () => pickImage(ImageSource.camera) : null,
                         icon: const Icon(Icons.camera_alt),
                         label: const Text("Camera"),
                       ),
                       ElevatedButton.icon(
-                        onPressed: () => pickImage(ImageSource.gallery),
+                        onPressed: selectedCrop != null ? () => pickImage(ImageSource.gallery) : null,
                         icon: const Icon(Icons.photo_library),
                         label: const Text("Gallery"),
                       ),

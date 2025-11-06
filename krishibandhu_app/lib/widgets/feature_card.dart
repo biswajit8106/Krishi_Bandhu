@@ -4,7 +4,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 
 class FeatureCard extends StatelessWidget {
   final String title;
-  final String description;
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
@@ -12,7 +11,6 @@ class FeatureCard extends StatelessWidget {
   const FeatureCard({
     super.key,
     required this.title,
-    required this.description,
     required this.icon,
     required this.color,
     required this.onTap,
@@ -83,18 +81,6 @@ class FeatureCard extends StatelessWidget {
                   color: Colors.grey[800],
                 ),
                 textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                description,
-                style: GoogleFonts.poppins(
-                  fontSize: 13,
-                  color: Colors.grey[600],
-                  height: 1.3,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),

@@ -6,8 +6,8 @@ import 'package:http/http.dart' as http;
 
 // Define the backend base URL
 // const String baseUrl = "http://10.0.2.2:8000"; // For Android emulator
-const String baseUrl = "http://10.15.83.103:9999"; // For Web/PC and mobile devices on same network
-const String localBaseUrl = "https://10.15.83.103:9999"; // For accessing local server over HTTPS
+const String baseUrl = "http://10.107.93.103:9999"; // For Web/PC and mobile devices on same network
+// const String localBaseUrl = "https://10.15.83.103:9999"; // For accessing local server over HTTPS
 // const String baseUrl = "http://localhost:9999"; // For devices connected via USB with adb reverse
 
 class ApiService {
@@ -78,22 +78,36 @@ class ApiService {
   }
 
   // Crop Disease Prediction
-  Future<Map<String, dynamic>> predictDisease(String token, String imageBase64) async {
+  Future<Map<String, dynamic>> predictDisease(String token, String crop, String imageBase64) async {
     final url = Uri.parse("$baseUrl/disease/predict");
     try {
       final response = await client.post(
         url,
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "application/x-www-form-urlencoded",
           "Authorization": "Bearer $token",
         },
-        body: jsonEncode({"image": imageBase64}),
+        body: {
+          "crop": crop,
+          "image": imageBase64,
+        },
       ).timeout(_timeoutDuration);
       return jsonDecode(response.body);
     } on TimeoutException {
       return {"success": false, "msg": "Connection timed out. Please check your network."};
     } catch (e) {
       return {"success": false, "msg": "An error occurred: ${e.toString()}"};
+    }
+  }
+
+  // Get Available Crops
+  Future<Map<String, dynamic>> getAvailableCrops() async {
+    try {
+      final url = Uri.parse("$baseUrl/disease/crops");
+      final response = await client.get(url).timeout(_timeoutDuration);
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {"success": false, "msg": e.toString()};
     }
   }
 
