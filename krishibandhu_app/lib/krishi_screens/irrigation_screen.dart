@@ -1,12 +1,9 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
-import '../widgets/irrigation_schedule_card.dart';
 import '../widgets/weather_info_card.dart';
-import '../models/irrigation_models.dart';
 import '../services/api_service.dart';
 
 class IrrigationScreen extends StatefulWidget {
@@ -17,14 +14,13 @@ class IrrigationScreen extends StatefulWidget {
   State<IrrigationScreen> createState() => _IrrigationScreenState();
 }
 
-class _IrrigationScreenState extends State<IrrigationScreen> with TickerProviderStateMixin {
-  late TabController _tabController;
-  // irrigation status and controls removed per request
+class _IrrigationScreenState extends State<IrrigationScreen> {
   // dynamic metadata from backend
   List<String> _cropTypes = [];
   List<String> _soilTypes = [];
   List<dynamic> _waterUsage = [];
   List<dynamic> _recentEvents = [];
+  
   // Form controllers
   final ApiService api = ApiService();
   final TextEditingController _districtController = TextEditingController();
@@ -53,10 +49,9 @@ class _IrrigationScreenState extends State<IrrigationScreen> with TickerProvider
   static const String _districtKey = 'district';
   static const String _villageKey = 'village';
 
-
   Future<void> _loadIrrigationMetadata() async {
     final meta = await api.getIrrigationMetadata();
-    if (meta != null && meta is Map) {
+    if (meta.containsKey('crops') || meta.containsKey('soils')) {
       setState(() {
         _cropTypes = List<String>.from(meta['crops'] ?? []);
         _soilTypes = List<String>.from(meta['soils'] ?? []);
@@ -65,7 +60,6 @@ class _IrrigationScreenState extends State<IrrigationScreen> with TickerProvider
   }
 
   Future<void> _loadWaterUsage() async {
-    // replace token retrieval as appropriate in your app
     try {
       final res = await api.getWaterUsage(widget.token, days: 30);
       if (res['success'] == true) {
@@ -85,7 +79,6 @@ class _IrrigationScreenState extends State<IrrigationScreen> with TickerProvider
 
   @override
   void dispose() {
-    _tabController.dispose();
     _districtController.dispose();
     _villageController.dispose();
     _areaController.dispose();
@@ -98,7 +91,7 @@ class _IrrigationScreenState extends State<IrrigationScreen> with TickerProvider
   Future<void> _fetchProfile() async {
     try {
       final profile = await api.getProfile(widget.token);
-      if (profile != null && profile is Map && profile.containsKey('email')) {
+      if (profile.containsKey('email')) {
         setState(() {
           _districtController.text = profile['district'] ?? '';
           _villageController.text = profile['location'] ?? profile['village'] ?? '';
@@ -115,7 +108,7 @@ class _IrrigationScreenState extends State<IrrigationScreen> with TickerProvider
       if (city.isEmpty) return;
 
       final data = await api.predictClimate(widget.token);
-      if (data != null && data is Map && !data.containsKey('msg') && !data.containsKey('detail') && !(data.containsKey('success') && data['success'] == false)) {
+      if (data.containsKey('temperature') || data.containsKey('forecast')) {
         setState(() {
           _weatherData = data;
           // Auto-populate temperature and rainfall from weather data
@@ -143,21 +136,8 @@ class _IrrigationScreenState extends State<IrrigationScreen> with TickerProvider
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: const Text('Smart Irrigation'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'Dashboard'),
-            Tab(text: 'Schedule'),
-          ],
-        ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildDashboard(),
-          _buildSchedule(),
-        ],
-      ),
+      body: _buildDashboard(),
     );
   }
 
@@ -200,7 +180,8 @@ class _IrrigationScreenState extends State<IrrigationScreen> with TickerProvider
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               value: _selectedCropType,
-              items: (_cropTypes.isNotEmpty ? _cropTypes : ['Rice', 'Wheat', 'Maize', 'Vegetables', 'Orchard']).map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+              items: (_cropTypes.isNotEmpty ? _cropTypes : ['Rice', 'Wheat', 'Maize', 'Vegetables', 'Orchard'])
+                  .map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
               onChanged: (v) {
                 setState(() => _selectedCropType = v);
                 _saveData();
@@ -210,7 +191,8 @@ class _IrrigationScreenState extends State<IrrigationScreen> with TickerProvider
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               value: _selectedSoilType,
-              items: (_soilTypes.isNotEmpty ? _soilTypes : ['Sandy', 'Clay', 'Loam', 'Silt', 'Peaty']).map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+              items: (_soilTypes.isNotEmpty ? _soilTypes : ['Sandy', 'Clay', 'Loam', 'Silt', 'Peaty'])
+                  .map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
               onChanged: (v) {
                 setState(() => _selectedSoilType = v);
                 _saveData();
@@ -225,7 +207,6 @@ class _IrrigationScreenState extends State<IrrigationScreen> with TickerProvider
             TextField(controller: _rainfallController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Rainfall (mm)')),
             const SizedBox(height: 8),
             TextField(controller: _dayAfterSowingController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Day After Sowing')),
-
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
@@ -239,7 +220,6 @@ class _IrrigationScreenState extends State<IrrigationScreen> with TickerProvider
               Text('Prediction:', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
               const SizedBox(height: 6),
               Text(_predictionText!, style: GoogleFonts.poppins(fontSize: 16, color: Colors.green[800])),
-
               Row(
                 children: [
                   ElevatedButton.icon(
@@ -253,145 +233,6 @@ class _IrrigationScreenState extends State<IrrigationScreen> with TickerProvider
                     },
                     icon: const Icon(Icons.save),
                     label: const Text('Save Prediction'),
-                  ),
-                  const SizedBox(width: 12),
-                  ElevatedButton.icon(
-                    onPressed: _isLoading ? null : () async {
-                      if (_predictionText == null) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Run prediction first')));
-                        return;
-                      }
-                      setState(() { _isLoading = true; });
-
-                      // Try to decode a prediction object; if _predictionText is JSON, parse it, otherwise try to extract a number
-                      Map<String, dynamic>? parsedPrediction;
-                      try {
-                        final p = jsonDecode(_predictionText!);
-                        if (p is Map<String, dynamic>) parsedPrediction = p;
-                      } catch (_) {
-                        parsedPrediction = null;
-                      }
-
-                      double? liters;
-                      if (parsedPrediction != null) {
-                        if (parsedPrediction['liters_required'] != null) liters = (parsedPrediction['liters_required'] as num).toDouble();
-                        else if (parsedPrediction['liters'] != null) liters = (parsedPrediction['liters'] as num).toDouble();
-                      }
-                      if (liters == null) {
-                        // try to extract number from the text (e.g. "1980.0 liters")
-                        final m = RegExp(r"([0-9]+(?:\.[0-9]+)?)").firstMatch(_predictionText!);
-                        if (m != null) liters = double.tryParse(m.group(1)!);
-                      }
-
-                      final body = {
-                        'prediction': {'liters_required': liters ?? 0.0, 'units': 'liters'},
-                        'weather': null,
-                        'crop_type': _selectedCropType,
-                        'soil_type': _selectedSoilType,
-                        'area': double.tryParse(_areaController.text) ?? 1.0
-                      };
-
-                      final res = await api.generateAISchedule(widget.token, body);
-                      setState(() { _isLoading = false; });
-
-                      if (res != null && res is Map && res['success'] == true) {
-                        // Backend may return the persisted schedules under 'created_schedules'
-                        // or return a planner 'plan' with schedules. Prefer created_schedules
-                        final plan = res['plan'] ?? {};
-                        final created = res['created_schedules'] ?? [];
-                        final schedules = (created is List && created.isNotEmpty) ? created : (plan['schedules'] ?? []);
-
-                        // update recent activity and water usage and refresh saved schedules
-                        _loadRecentActivity();
-                        _loadWaterUsage();
-                        _loadSchedules();
-
-                        if (schedules is List && schedules.isNotEmpty) {
-                          // Convert entire planner 'schedules' into PredictedIrrigationDay list (day-wise)
-                          final List<PredictedIrrigationDay> predictedDays = schedules.map<PredictedIrrigationDay>((s) {
-                            DateTime day;
-                            try {
-                              day = DateTime.parse(s['date'].toString());
-                            } catch (_) {
-                              day = DateTime.now();
-                            }
-                            // Try to extract minutes from duration string like '15 minutes' or '15 min'
-                            int minutes = 0;
-                            final dur = s['duration']?.toString() ?? '';
-                            final m = RegExp(r"(\d+)").firstMatch(dur);
-                            if (m != null) {
-                              minutes = int.tryParse(m.group(0) ?? '0') ?? 0;
-                            }
-                            final water = (s['water_liters'] is num) ? (s['water_liters'] as num).toDouble() : 0.0;
-                            return PredictedIrrigationDay(day: day, durationMinutes: minutes, waterLitres: water);
-                          }).toList();
-
-                          // Group schedules by date (if date present)
-                          final Map<String, List<dynamic>> grouped = {};
-                          for (var s in schedules) {
-                            final date = (s is Map && s['date'] != null) ? s['date'].toString() : 'Plan';
-                            grouped.putIfAbsent(date, () => []).add(s);
-                          }
-
-                          // Show day-wise plan in a bottom sheet
-                          showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            builder: (ctx) {
-                              return DraggableScrollableSheet(
-                                expand: false,
-                                builder: (_, controller) {
-                                  return Container(
-                                    padding: const EdgeInsets.all(16),
-                                    child: ListView(
-                                      controller: controller,
-                                      children: grouped.keys.map((date) {
-                                        final items = grouped[date]!;
-                                        return Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(date, style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold)),
-                                            const SizedBox(height: 8),
-                                            ...items.map<Widget>((it) {
-                                              final time = it['time'] ?? '';
-                                              final duration = it['duration'] ?? '';
-                                              final litersVal = it['water_liters'] != null ? (it['water_liters'] as num).toDouble() : null;
-                                              final litersStr = litersVal != null ? '${litersVal.toStringAsFixed(1)} L' : '';
-                                              final enabled = it['is_enabled'] == true;
-
-                                              return Column(
-                                                children: [
-                                                  IrrigationScheduleCard(
-                                                    time: '$time ${litersStr.isNotEmpty ? "• $litersStr" : ''}',
-                                                    duration: duration.toString(),
-                                                    isEnabled: enabled,
-                                                    onToggle: (v) {},
-                                                    predictedPlan: predictedDays,
-                                                  ),
-                                                  const SizedBox(height: 8),
-                                                ],
-                                              );
-                                            }).toList(),
-                                            const SizedBox(height: 12),
-                                          ],
-                                        );
-                                      }).toList(),
-                                    ),
-                                  );
-                                },
-                              );
-                            },
-                          );
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No schedules returned by planner')));
-                        }
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res != null && res['msg'] != null ? res['msg'].toString() : 'Failed to generate schedule')));
-                      }
-                    },
-                    icon: const Icon(Icons.schedule),
-                    label: const Text('Generate AI Schedule'),
-                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
                   ),
                 ],
               ),
@@ -424,24 +265,19 @@ class _IrrigationScreenState extends State<IrrigationScreen> with TickerProvider
     final res = await api.predictIrrigation(widget.token, body);
     setState(() { _isLoading = false; });
 
-    if (res == null) {
-      setState(() => _predictionText = 'No response from server');
-      return;
-    }
-
-    if (res is Map && res.containsKey('liters_required')) {
+    if (res.containsKey('liters_required')) {
       setState(() {
         _predictionText = '${res['liters_required']} ${res['units'] ?? 'liters'}';
         _dayWiseRequirements = List<dynamic>.from(res['day_wise_requirements'] ?? []);
       });
       _saveData();
-    } else if (res is Map && res.containsKey('prediction')) {
+    } else if (res.containsKey('prediction')) {
       setState(() {
         _predictionText = jsonEncode(res['prediction']);
         _dayWiseRequirements = List<dynamic>.from(res['day_wise_requirements'] ?? []);
       });
       _saveData();
-    } else if (res is Map && res.containsKey('success') && res['success'] == false) {
+    } else if (res.containsKey('success') && res['success'] == false) {
       setState(() {
         _predictionText = res['msg'] ?? 'Prediction failed';
         _dayWiseRequirements = [];
@@ -454,26 +290,6 @@ class _IrrigationScreenState extends State<IrrigationScreen> with TickerProvider
       });
       _saveData();
     }
-  }
-
-  Widget _buildIrrigationStatus() {
-    // Irrigation status block removed.
-    return const SizedBox.shrink();
-  }
-
-  Widget _buildQuickControls() {
-    // Quick controls removed.
-    return const SizedBox.shrink();
-  }
-
-  Widget _buildControlButton(String label, IconData icon, Color color, VoidCallback onPressed) {
-    // Control buttons removed.
-    return ElevatedButton.icon(onPressed: onPressed, icon: Icon(icon), label: Text(label));
-  }
-
-  Widget _buildSoilMoistureChart() {
-    // Soil moisture chart removed.
-    return const SizedBox.shrink();
   }
 
   Widget _buildWaterUsageStats() {
@@ -680,19 +496,9 @@ class _IrrigationScreenState extends State<IrrigationScreen> with TickerProvider
     );
   }
 
-  Widget _buildZones() {
-    // Zones view removed.
-    return const SizedBox.shrink();
-  }
-
-  // Track schedules state
-  List<Map<String, dynamic>> _schedules = [];
-  bool _isLoadingSchedules = false;
-
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
     // Add listeners to controllers for saving data on changes
     _districtController.addListener(_saveData);
     _villageController.addListener(_saveData);
@@ -700,13 +506,12 @@ class _IrrigationScreenState extends State<IrrigationScreen> with TickerProvider
     _temperatureController.addListener(_saveData);
     _rainfallController.addListener(_saveData);
     _dayAfterSowingController.addListener(_saveData);
-    // Load schedules along with other data
+    // Load data
     _loadSavedData();
     _fetchProfile();
     _loadIrrigationMetadata();
     _loadWaterUsage();
     _loadRecentActivity();
-    _loadSchedules();
   }
 
   Future<void> _loadSavedData() async {
@@ -743,160 +548,4 @@ class _IrrigationScreenState extends State<IrrigationScreen> with TickerProvider
     await prefs.setString(_rainfallKey, _rainfallController.text);
     await prefs.setString(_dayAfterSowingKey, _dayAfterSowingController.text);
   }
-
-  Future<void> _loadSchedules() async {
-    setState(() { _isLoadingSchedules = true; });
-    try {
-      final res = await api.getIrrigationSchedules(widget.token);
-      if (res['success'] == true && res['data'] != null) {
-        setState(() { _schedules = List<Map<String, dynamic>>.from(res['data']); });
-      }
-    } catch (_) {}
-    setState(() { _isLoadingSchedules = false; });
-  }
-
-  Widget _buildSchedule() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Irrigation Schedule',
-                style: GoogleFonts.poppins(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[800],
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.refresh),
-                onPressed: _loadSchedules,
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          if (_isLoadingSchedules)
-            const Center(child: CircularProgressIndicator())
-          else if (_schedules.isEmpty)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  children: [
-                    Icon(Icons.calendar_today, size: 48, color: Colors.grey[400]),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No schedules yet',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    Text(
-                      'Use Predict & Generate AI Schedule to create schedules',
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        color: Colors.grey[500],
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else
-            ..._buildDayWiseSchedules(),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () async {
-                // Switch to Dashboard tab for prediction
-                _tabController.animateTo(0);
-                // Scroll to prediction card (would need a ScrollController)
-                // Or show a hint about using prediction
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Use Predict & Generate AI Schedule to create new schedules'))
-                );
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Add New Schedule'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  List<Widget> _buildDayWiseSchedules() {
-    // Group schedules by date
-    final Map<String, List<Map<String, dynamic>>> grouped = {};
-    for (var s in _schedules) {
-      final date = s['date']?.toString() ?? 'Unscheduled';
-      grouped.putIfAbsent(date, () => []).add(s);
-    }
-
-    // Sort dates
-    final sortedDates = grouped.keys.toList()..sort();
-    
-    return sortedDates.expand((date) {
-      final schedules = grouped[date]!;
-      return [
-        Padding(
-          padding: const EdgeInsets.only(top: 16, bottom: 8),
-          child: Text(
-            date,
-            style: GoogleFonts.poppins(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[700],
-            ),
-          ),
-        ),
-        ...schedules.map((s) {
-          final time = s['time'] ?? '';
-          final duration = s['duration'] ?? '';
-          final liters = s['water_liters'];
-          final litersStr = liters != null ? ' • ${liters.toStringAsFixed(1)} L' : '';
-          final enabled = s['is_enabled'] == true;
-
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: IrrigationScheduleCard(
-              time: '$time$litersStr',
-              duration: duration,
-              isEnabled: enabled,
-              onToggle: (v) async {
-                // Update schedule enabled state
-                final body = Map<String, dynamic>.from(s)..['is_enabled'] = v;
-                await api.createIrrigationSchedule(widget.token, body);
-                _loadSchedules();  // Refresh list
-              },
-              // Demo predicted plan for this schedule (7 days)
-              predictedPlan: List.generate(7, (i) {
-                final baseDuration = int.tryParse(duration.toString()) ?? 0;
-                final d = DateTime.now().add(Duration(days: i));
-                final litersVal = (s['water_liters'] is num) ? (s['water_liters'] as num).toDouble() : 0.0;
-                return PredictedIrrigationDay(
-                  day: d,
-                  durationMinutes: (baseDuration + i * 2),
-                  waterLitres: litersVal + (i * 0.5),
-                );
-              }),
-            ),
-          );
-        }).toList(),
-      ];
-    }).toList();
-  }
-
-  // Control and settings methods removed.
 }
