@@ -1,22 +1,19 @@
-# backend/app/routes/crop_disease.py
-from fastapi import APIRouter, UploadFile, File, Form
-from ..services.crop_disease_service import CropDiseaseService
-import base64
+from fastapi import APIRouter, Form
+from ..services.crop_disease_service import crop_disease_service
 
 router = APIRouter()
 
-disease_service = CropDiseaseService()
-
 @router.post("/predict")
-async def predict_disease(crop: str = Form(...), image: str = Form(...)):
+async def predict_disease(crop_type: str = Form(...), file: str = Form(...)):
     try:
-        # Decode base64 image
-        image_data = base64.b64decode(image)
-        prediction = disease_service.predict(crop.lower(), image_data)
-        return {"prediction": prediction}
+        # Make prediction using the service with base64 image data
+        result = crop_disease_service.predict(crop_type.lower(), file)
+
+        return {"crop_type": crop_type, **result}
     except Exception as e:
         return {"error": str(e)}
 
 @router.get("/crops")
 async def get_available_crops():
-    return {"crops": disease_service.get_available_crops()}
+    crops = list(crop_disease_service.models.keys())
+    return {"crops": crops}

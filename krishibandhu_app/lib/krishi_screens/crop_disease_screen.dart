@@ -547,9 +547,9 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
 
       final result = await apiService.predictDisease(widget.token, backendCrop, base64Image);
 
-      if (result.containsKey('error')) {
+      if (!result['success']) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Prediction error: ${result['error']}')),
+          SnackBar(content: Text('Prediction error: ${result['msg']}')),
         );
         setState(() {
           _isAnalyzing = false;
@@ -557,11 +557,13 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
         return;
       }
 
+      final data = result['data'];
+
       setState(() {
         _isAnalyzing = false;
         _diseaseResults = [
           DiseaseResult(
-            diseaseName: 'Predicted Class: ${result['prediction'] ?? 'Unknown'}',
+            diseaseName: 'Predicted Class: ${data['prediction'] ?? 'Unknown'}',
             confidence: 100.0, // Model prediction confidence not provided
             description: 'Disease predicted by AI model for ${_selectedCrop}',
             symptoms: ['Symptoms not available from model'],

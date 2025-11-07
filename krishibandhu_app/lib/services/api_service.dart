@@ -1,5 +1,3 @@
-// lib/services/api_service.dart
-
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -28,7 +26,7 @@ class ApiService {
     final url = Uri.parse("$baseUrl/auth/signup");
     try {
       final response = await http.post(
-        url, 
+        url,
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "name": name,
@@ -78,7 +76,7 @@ class ApiService {
   }
 
   // Crop Disease Prediction
-  Future<Map<String, dynamic>> predictDisease(String token, String crop, String imageBase64) async {
+  Future<Map<String, dynamic>> predictDisease(String token, String cropType, String imageBase64) async {
     final url = Uri.parse("$baseUrl/disease/predict");
     try {
       final response = await client.post(
@@ -88,11 +86,16 @@ class ApiService {
           "Authorization": "Bearer $token",
         },
         body: {
-          "crop": crop,
-          "image": imageBase64,
+          "crop_type": cropType,
+          "file": imageBase64,
         },
       ).timeout(_timeoutDuration);
-      return jsonDecode(response.body);
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {"success": true, "data": data};
+      } else {
+        return {"success": false, "msg": data["error"] ?? "Prediction failed"};
+      }
     } on TimeoutException {
       return {"success": false, "msg": "Connection timed out. Please check your network."};
     } catch (e) {
