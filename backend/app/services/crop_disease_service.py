@@ -112,6 +112,11 @@ class CropDiseaseService:
     def preprocess_image(self, image_data):
         # Decode base64 image
         image_bytes = base64.b64decode(image_data)
+        # Save decoded image for debugging
+        debug_image_path = os.path.join(os.path.dirname(__file__), '..', 'decoded_test_image.jpg')
+        with open(debug_image_path, 'wb') as f:
+            f.write(image_bytes)
+
         image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
 
         # Define transforms
@@ -138,10 +143,17 @@ class CropDiseaseService:
             # Make prediction
             with torch.no_grad():
                 outputs = model(input_tensor)
-                _, predicted = torch.max(outputs, 1)
+                # Apply softmax to get probabilities
+                probabilities = nn.functional.softmax(outputs, dim=1)
+                confidence, predicted = torch.max(probabilities, 1)
                 predicted_class = class_names[predicted.item()]
+                confidence_score = confidence.item()
 
-            return {"prediction": predicted_class}
+                # Debug: log all class probabilities for diagnosis
+                prob_dict = {class_names[i]: float(probabilities[0,i]) for i in range(len(class_names))}
+                print(f"Prediction debug for crop '{crop_type}': {prob_dict}")
+
+            return {"prediction": predicted_class, "confidence": confidence_score, "probabilities": prob_dict}
         except Exception as e:
             return {"error": f"Prediction failed: {str(e)}"}
 

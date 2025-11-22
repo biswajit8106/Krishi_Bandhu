@@ -559,12 +559,35 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
 
       final data = result['data'];
 
+      // Parse confidence from backend and normalize to percentage (0-100).
+      double parsedConfidence = 0.0;
+      try {
+        final rawConf = data['confidence'];
+        if (rawConf != null) {
+          if (rawConf is num) {
+            parsedConfidence = rawConf.toDouble();
+          } else if (rawConf is String) {
+            parsedConfidence = double.tryParse(rawConf) ?? 0.0;
+          }
+
+          // If model returns probability in [0,1], convert to percentage
+          if (parsedConfidence <= 1.0) {
+            parsedConfidence = parsedConfidence * 100.0;
+          }
+        }
+      } catch (_) {
+        parsedConfidence = 0.0;
+      }
+
+      // Clamp to sensible range
+      parsedConfidence = parsedConfidence.clamp(0.0, 100.0);
+
       setState(() {
         _isAnalyzing = false;
         _diseaseResults = [
           DiseaseResult(
             diseaseName: 'Predicted Class: ${data['prediction'] ?? 'Unknown'}',
-            confidence: 100.0, // Model prediction confidence not provided
+            confidence: parsedConfidence,
             description: 'Disease predicted by AI model for ${_selectedCrop}',
             symptoms: ['Symptoms not available from model'],
             treatment: 'Consult local agricultural expert for treatment',

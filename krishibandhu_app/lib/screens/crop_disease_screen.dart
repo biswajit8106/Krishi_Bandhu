@@ -20,6 +20,7 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
   bool loading = false;
   String? selectedCrop;
   List<String> availableCrops = [];
+  double? confidence;
 
   @override
   void initState() {
@@ -42,6 +43,7 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
       setState(() {
         _imageFile = File(picked.path);
         prediction = null;
+        confidence = null;
       });
       if (selectedCrop != null) {
         uploadAndPredict();
@@ -63,9 +65,26 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
     final res = await apiService.predictDisease(widget.token, selectedCrop!, base64Image);
 
     setState(() {
-      prediction = res["prediction"] ?? "Could not detect disease";
+      prediction = res["data"] != null ? res["data"]["prediction"] : "Could not detect disease";
+      double? conf = res["data"] != null ? (res["data"]["confidence"] as num?)?.toDouble() : null;
+      confidence = conf;
       loading = false;
     });
+  }
+
+  Widget _buildConfidenceIndicator() {
+    if (confidence == null) return SizedBox.shrink();
+
+    if (confidence! < 0.6) {
+      return const Text(
+        'Low confidence in the prediction',
+        style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+      );
+    }
+    return Text(
+      'Confidence: ${(confidence! * 100).toStringAsFixed(2)}%',
+      style: const TextStyle(color: Colors.green),
+    );
   }
 
   @override
@@ -90,6 +109,7 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
                 setState(() {
                   selectedCrop = value;
                   prediction = null; // Reset prediction when crop changes
+                  confidence = null;
                 });
               },
               decoration: const InputDecoration(
@@ -119,11 +139,14 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
                     ],
                   ),
             const SizedBox(height: 20),
-            if (prediction != null)
+            if (prediction != null) ...[
               Text(
                 "Prediction: $prediction",
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
+              const SizedBox(height: 8),
+              _buildConfidenceIndicator(),
+            ],
           ],
         ),
       ),
