@@ -85,11 +85,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   .animate()
                   .fadeIn(duration: 600.ms, delay: 200.ms)
                   .slideX(begin: -0.1, end: 0),
-              const SizedBox(height: 24),
-              _buildQuickStats()
-                  .animate()
-                  .fadeIn(duration: 600.ms, delay: 400.ms)
-                  .slideY(begin: 0.1, end: 0),
+              // const SizedBox(height: 24),
+              // _buildQuickStats()
+              //     .animate()
+              //     .fadeIn(duration: 600.ms, delay: 400.ms)
+              //     .slideY(begin: 0.1, end: 0),
               const SizedBox(height: 24),
               _buildFeaturesSection(context)
                   .animate()
@@ -194,65 +194,65 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildQuickStats() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Quick Stats',
-          style: GoogleFonts.poppins(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey[800],
-          ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: QuickStatsCard(
-                title: 'Crop Health',
-                value: '85%',
-                icon: Icons.eco,
-                color: AppTheme.successColor,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: QuickStatsCard(
-                title: 'Soil Moisture',
-                value: '72%',
-                icon: Icons.water_drop,
-                color: AppTheme.infoColor,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: QuickStatsCard(
-                title: 'Irrigation',
-                value: 'Active',
-                icon: Icons.water_drop,
-                color: AppTheme.primaryColor,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: QuickStatsCard(
-                title: 'Yield Prediction',
-                value: '2.5T',
-                icon: Icons.trending_up,
-                color: AppTheme.warningColor,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
+  // Widget _buildQuickStats() {
+  //   return Column(
+  //     crossAxisAlignment: CrossAxisAlignment.start,
+  //     children: [
+  //       Text(
+  //         'Quick Stats',
+  //         style: GoogleFonts.poppins(
+  //           fontSize: 20,
+  //           fontWeight: FontWeight.w600,
+  //           color: Colors.grey[800],
+  //         ),
+  //       ),
+  //       const SizedBox(height: 12),
+  //       Row(
+  //         children: [
+  //           Expanded(
+  //             child: QuickStatsCard(
+  //               title: 'Crop Health',
+  //               value: '85%',
+  //               icon: Icons.eco,
+  //               color: AppTheme.successColor,
+  //             ),
+  //           ),
+  //           const SizedBox(width: 12),
+  //           Expanded(
+  //             child: QuickStatsCard(
+  //               title: 'Soil Moisture',
+  //               value: '72%',
+  //               icon: Icons.water_drop,
+  //               color: AppTheme.infoColor,
+  //             ),
+  //           ),
+  //         ],
+  //       ),
+  //       const SizedBox(height: 12),
+  //       Row(
+  //         children: [
+  //           Expanded(
+  //             child: QuickStatsCard(
+  //               title: 'Irrigation',
+  //               value: 'Active',
+  //               icon: Icons.water_drop,
+  //               color: AppTheme.primaryColor,
+  //             ),
+  //           ),
+  //           const SizedBox(width: 12),
+  //           Expanded(
+  //             child: QuickStatsCard(
+  //               title: 'Yield Prediction',
+  //               value: '2.5T',
+  //               icon: Icons.trending_up,
+  //               color: AppTheme.warningColor,
+  //             ),
+  //           ),
+  //         ],
+  //       ),
+  //     ],
+  //   );
+  // }
 
   Widget _buildFeaturesSection(BuildContext context) {
     return Column(
