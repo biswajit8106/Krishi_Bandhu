@@ -6,6 +6,7 @@ import 'dart:convert';
 import '../theme/app_theme.dart';
 import '../widgets/disease_result_card.dart';
 import '../widgets/camera_button.dart';
+import '../widgets/bottom_nav_bar.dart';
 import '../services/api_service.dart';
 
 class CropDiseaseScreen extends StatefulWidget {
@@ -26,19 +27,71 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
   final ApiService apiService = ApiService();
 
   final List<Map<String, String>> crops = [
-    {"name": "Apple", "asset": "lib/krishi_screens/assets/apple.png", "backend": "apple"},
-    {"name": "Banana", "asset": "lib/krishi_screens/assets/Banana.png", "backend": "banana"},
-    {"name": "Black Gram", "asset": "lib/krishi_screens/assets/Black Gram.png", "backend": "black_gram"},
-    {"name": "Brinjal", "asset": "lib/krishi_screens/assets/brinjal.png", "backend": "brinjal"},
-    {"name": "Chilli", "asset": "lib/krishi_screens/assets/Chilli.png", "backend": "chilli"},
-    {"name": "Grape", "asset": "lib/krishi_screens/assets/Grape.png", "backend": "grape"},
-    {"name": "Maize", "asset": "lib/krishi_screens/assets/Maize.png", "backend": "corn"},
-    {"name": "Potato", "asset": "lib/krishi_screens/assets/Potato.png", "backend": "potato"},
-    {"name": "Rice", "asset": "lib/krishi_screens/assets/Rice.png", "backend": "rice"},
-    {"name": "Soybean", "asset": "lib/krishi_screens/assets/Soybean.png", "backend": "soybean"},
-    {"name": "Sugarcane", "asset": "lib/krishi_screens/assets/Sugarcan.png", "backend": "sugarcane"},
-    {"name": "Tomato", "asset": "lib/krishi_screens/assets/Tamato.png", "backend": "tomato"},
-    {"name": "Wheat", "asset": "lib/krishi_screens/assets/Wheat.png", "backend": "wheat"},
+    {
+      "name": "Apple",
+      "asset": "lib/krishi_screens/assets/apple.png",
+      "backend": "apple",
+    },
+    {
+      "name": "Banana",
+      "asset": "lib/krishi_screens/assets/Banana.png",
+      "backend": "banana",
+    },
+    {
+      "name": "Black Gram",
+      "asset": "lib/krishi_screens/assets/Black Gram.png",
+      "backend": "black_gram",
+    },
+    {
+      "name": "Brinjal",
+      "asset": "lib/krishi_screens/assets/brinjal.png",
+      "backend": "brinjal",
+    },
+    {
+      "name": "Chilli",
+      "asset": "lib/krishi_screens/assets/Chilli.png",
+      "backend": "chilli",
+    },
+    {
+      "name": "Grape",
+      "asset": "lib/krishi_screens/assets/Grape.png",
+      "backend": "grape",
+    },
+    {
+      "name": "Maize",
+      "asset": "lib/krishi_screens/assets/Maize.png",
+      "backend": "corn",
+    },
+    {
+      "name": "Potato",
+      "asset": "lib/krishi_screens/assets/Potato.png",
+      "backend": "potato",
+    },
+    {
+      "name": "Rice",
+      "asset": "lib/krishi_screens/assets/Rice.png",
+      "backend": "rice",
+    },
+    {
+      "name": "Soybean",
+      "asset": "lib/krishi_screens/assets/Soybean.png",
+      "backend": "soybean",
+    },
+    {
+      "name": "Sugarcane",
+      "asset": "lib/krishi_screens/assets/Sugarcan.png",
+      "backend": "sugarcane",
+    },
+    {
+      "name": "Tomato",
+      "asset": "lib/krishi_screens/assets/Tamato.png",
+      "backend": "tomato",
+    },
+    {
+      "name": "Wheat",
+      "asset": "lib/krishi_screens/assets/Wheat.png",
+      "backend": "wheat",
+    },
   ];
 
   @override
@@ -77,6 +130,7 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
           ),
         ),
       ),
+      bottomNavigationBar: BottomNavBar(currentIndex: 1, token: widget.token),
     );
   }
 
@@ -543,9 +597,14 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
         (crop) => crop["name"] == _selectedCrop,
         orElse: () => {"backend": _selectedCrop!.toLowerCase()},
       );
-      final backendCrop = selectedCropData["backend"] ?? _selectedCrop!.toLowerCase();
+      final backendCrop =
+          selectedCropData["backend"] ?? _selectedCrop!.toLowerCase();
 
-      final result = await apiService.predictDisease(widget.token, backendCrop, base64Image);
+      final result = await apiService.predictDisease(
+        widget.token,
+        backendCrop,
+        base64Image,
+      );
 
       if (!result['success']) {
         ScaffoldMessenger.of(context).showSnackBar(

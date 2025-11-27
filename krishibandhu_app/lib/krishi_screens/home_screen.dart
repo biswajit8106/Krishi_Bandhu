@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../widgets/feature_card.dart';
 import '../widgets/weather_card.dart';
 import '../widgets/quick_stats_card.dart';
+import '../widgets/bottom_nav_bar.dart';
 import '../services/api_service.dart';
 import 'crop_disease_screen.dart';
 import 'weather_screen.dart';
@@ -76,10 +77,11 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeader(context)
-                  .animate()
-                  .fadeIn(duration: 600.ms)
-                  .slideY(begin: -0.1, end: 0),
+              _buildProfileButton(context),
+              const SizedBox(height: 16),
+              _buildHeader(
+                context,
+              ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.1, end: 0),
               const SizedBox(height: 24),
               _buildWeatherSection()
                   .animate()
@@ -102,6 +104,37 @@ class _HomeScreenState extends State<HomeScreen> {
                   .slideY(begin: 0.1, end: 0),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileButton(BuildContext context) {
+    return Align(
+      alignment: Alignment.topLeft,
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ProfileScreen(token: widget.token),
+            ),
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppTheme.primaryColor,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.primaryColor.withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: const Icon(Icons.person, color: Colors.white, size: 24),
         ),
       ),
     );
@@ -149,13 +182,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 12),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    'Farm Status: Active',
+                    'Status: Active',
                     style: GoogleFonts.poppins(
                       fontSize: 12,
                       color: Colors.white,
@@ -166,11 +202,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          const Icon(
-            Icons.agriculture,
-            size: 60,
-            color: Colors.white,
-          ),
+          const Icon(Icons.agriculture, size: 60, color: Colors.white),
         ],
       ),
     );
@@ -276,46 +308,55 @@ class _HomeScreenState extends State<HomeScreen> {
           childAspectRatio: 1.0,
           children: [
             FeatureCard(
-              title: 'Crop Disease Detection',
+              title: 'Disease Detection',
               icon: Icons.eco,
               color: AppTheme.errorColor,
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => CropDiseaseScreen(token: widget.token)),
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        CropDiseaseScreen(token: widget.token),
+                  ),
                 );
               },
             ),
             FeatureCard(
-              title: 'Weather Prediction',
+              title: 'Weather',
               icon: Icons.wb_sunny,
               color: AppTheme.warningColor,
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => WeatherScreen(token: widget.token)),
+                  MaterialPageRoute(
+                    builder: (context) => WeatherScreen(token: widget.token),
+                  ),
                 );
               },
             ),
             FeatureCard(
-              title: 'Smart Irrigation',
+              title: 'Irrigation',
               icon: Icons.water_drop,
               color: AppTheme.infoColor,
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => IrrigationScreen(token: widget.token)),
+                  MaterialPageRoute(
+                    builder: (context) => IrrigationScreen(token: widget.token),
+                  ),
                 );
               },
             ),
             FeatureCard(
-              title: 'Virtual Assistant',
+              title: 'Assistant',
               icon: Icons.smart_toy,
               color: AppTheme.primaryColor,
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => AssistantScreen(token: widget.token)),
+                  MaterialPageRoute(
+                    builder: (context) => AssistantScreen(token: widget.token),
+                  ),
                 );
               },
             ),
@@ -347,7 +388,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: Icons.eco,
                   title: 'Crop scan completed',
                   subtitle: 'Rice field - No diseases detected',
-                  time: '2 hours ago',
+                  time: '1 hours ago',
                   color: AppTheme.successColor,
                 ),
                 const Divider(),
@@ -355,15 +396,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: Icons.water_drop,
                   title: 'Irrigation scheduled',
                   subtitle: 'Field A - 30 minutes',
-                  time: '4 hours ago',
+                  time: 'Long time ago',
                   color: AppTheme.infoColor,
                 ),
                 const Divider(),
                 _buildActivityItem(
                   icon: Icons.wb_sunny,
-                  title: 'Weather alert',
+                  title: 'Weather Forcast',
                   subtitle: 'Rain expected tomorrow',
-                  time: '6 hours ago',
+                  time: '12 hours ago',
                   color: AppTheme.warningColor,
                 ),
               ],
@@ -417,10 +458,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           Text(
             time,
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              color: Colors.grey[500],
-            ),
+            style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[500]),
           ),
         ],
       ),
@@ -428,65 +466,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildBottomNavigationBar(BuildContext context) {
-    return BottomNavigationBar(
-      type: BottomNavigationBarType.fixed,
-      backgroundColor: Colors.white,
-      selectedItemColor: AppTheme.primaryColor,
-      unselectedItemColor: Colors.grey[600],
-      currentIndex: 0, // Home is selected by default
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home),
-          label: 'Home',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.eco),
-          label: 'Disease',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.wb_sunny),
-          label: 'Weather',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.water_drop),
-          label: 'Irrigation',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.person),
-          label: 'Profile',
-        ),
-      ],
-      onTap: (index) {
-        switch (index) {
-          case 0:
-            // Already on home
-            break;
-          case 1:
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => CropDiseaseScreen(token: widget.token)),
-            );
-            break;
-          case 2:
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => WeatherScreen(token: widget.token)),
-            );
-            break;
-          case 3:
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => IrrigationScreen(token: widget.token)),
-            );
-            break;
-          case 4:
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => ProfileScreen(token: widget.token)),
-            );
-            break;
-        }
-      },
-    );
+    return BottomNavBar(currentIndex: 0, token: widget.token);
   }
 }

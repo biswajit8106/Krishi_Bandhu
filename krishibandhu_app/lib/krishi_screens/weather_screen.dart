@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../widgets/weather_forecast_card.dart';
 import '../widgets/weather_chart.dart';
+import '../widgets/bottom_nav_bar.dart';
 import '../services/api_service.dart';
 
 class WeatherScreen extends StatefulWidget {
@@ -13,7 +14,8 @@ class WeatherScreen extends StatefulWidget {
   State<WeatherScreen> createState() => _WeatherScreenState();
 }
 
-class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateMixin {
+class _WeatherScreenState extends State<WeatherScreen>
+    with TickerProviderStateMixin {
   late TabController _tabController;
   String _selectedLocation = 'Farm Location';
   String _selectedUnit = 'Celsius';
@@ -83,6 +85,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
           _buildWeatherCharts(),
         ],
       ),
+      bottomNavigationBar: BottomNavBar(currentIndex: 2, token: widget.token),
     );
   }
 
@@ -136,7 +139,10 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppTheme.infoColor.withOpacity(0.1), AppTheme.primaryColor.withOpacity(0.1)],
+          colors: [
+            AppTheme.infoColor.withOpacity(0.1),
+            AppTheme.primaryColor.withOpacity(0.1),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -208,18 +214,60 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildWeatherMetric('Humidity', weatherData != null && weatherData!.containsKey('humidity') ? '${weatherData!['humidity']}%' : '--%', Icons.water_drop, AppTheme.infoColor),
-                _buildWeatherMetric('Wind Speed', weatherData != null && weatherData!.containsKey('wind_speed') ? '${weatherData!['wind_speed']} km/h' : '-- km/h', Icons.air, AppTheme.warningColor),
-                _buildWeatherMetric('Pressure', weatherData != null && weatherData!.containsKey('pressure') ? '${weatherData!['pressure']} hPa' : '-- hPa', Icons.compress, AppTheme.primaryColor),
+                _buildWeatherMetric(
+                  'Humidity',
+                  weatherData != null && weatherData!.containsKey('humidity')
+                      ? '${weatherData!['humidity']}%'
+                      : '--%',
+                  Icons.water_drop,
+                  AppTheme.infoColor,
+                ),
+                _buildWeatherMetric(
+                  'Wind Speed',
+                  weatherData != null && weatherData!.containsKey('wind_speed')
+                      ? '${weatherData!['wind_speed']} km/h'
+                      : '-- km/h',
+                  Icons.air,
+                  AppTheme.warningColor,
+                ),
+                _buildWeatherMetric(
+                  'Pressure',
+                  weatherData != null && weatherData!.containsKey('pressure')
+                      ? '${weatherData!['pressure']} hPa'
+                      : '-- hPa',
+                  Icons.compress,
+                  AppTheme.primaryColor,
+                ),
               ],
             ),
             const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildWeatherMetric('UV Index', weatherData != null && weatherData!.containsKey('uv_index') ? '${weatherData!['uv_index']}' : '--', Icons.wb_sunny, AppTheme.warningColor),
-                _buildWeatherMetric('Visibility', weatherData != null && weatherData!.containsKey('visibility') ? '${weatherData!['visibility']} km' : '-- km', Icons.visibility, AppTheme.successColor),
-                _buildWeatherMetric('Dew Point', weatherData != null && weatherData!.containsKey('dew_point') ? '${weatherData!['dew_point']}°C' : '--°C', Icons.water, AppTheme.infoColor),
+                _buildWeatherMetric(
+                  'UV Index',
+                  weatherData != null && weatherData!.containsKey('uv_index')
+                      ? '${weatherData!['uv_index']}'
+                      : '--',
+                  Icons.wb_sunny,
+                  AppTheme.warningColor,
+                ),
+                _buildWeatherMetric(
+                  'Visibility',
+                  weatherData != null && weatherData!.containsKey('visibility')
+                      ? '${weatherData!['visibility']} km'
+                      : '-- km',
+                  Icons.visibility,
+                  AppTheme.successColor,
+                ),
+                _buildWeatherMetric(
+                  'Dew Point',
+                  weatherData != null && weatherData!.containsKey('dew_point')
+                      ? '${weatherData!['dew_point']}°C'
+                      : '--°C',
+                  Icons.water,
+                  AppTheme.infoColor,
+                ),
               ],
             ),
           ],
@@ -228,7 +276,12 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
     );
   }
 
-  Widget _buildWeatherMetric(String label, String value, IconData icon, Color color) {
+  Widget _buildWeatherMetric(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Column(
       children: [
         Icon(icon, color: color, size: 24),
@@ -243,10 +296,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
         ),
         Text(
           label,
-          style: GoogleFonts.poppins(
-            fontSize: 12,
-            color: Colors.grey[600],
-          ),
+          style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600]),
         ),
       ],
     );
@@ -274,15 +324,40 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                _buildDetailRow('Feels Like', weatherData != null && weatherData!.containsKey('feels_like') ? '${weatherData!['feels_like']}°C' : '--°C'),
+                _buildDetailRow(
+                  'Feels Like',
+                  weatherData != null && weatherData!.containsKey('feels_like')
+                      ? '${weatherData!['feels_like']}°C'
+                      : '--°C',
+                ),
                 const Divider(),
-                _buildDetailRow('Sunrise', weatherData != null && weatherData!.containsKey('sunrise') ? weatherData!['sunrise'] : '--'),
+                _buildDetailRow(
+                  'Sunrise',
+                  weatherData != null && weatherData!.containsKey('sunrise')
+                      ? weatherData!['sunrise']
+                      : '--',
+                ),
                 const Divider(),
-                _buildDetailRow('Sunset', weatherData != null && weatherData!.containsKey('sunset') ? weatherData!['sunset'] : '--'),
+                _buildDetailRow(
+                  'Sunset',
+                  weatherData != null && weatherData!.containsKey('sunset')
+                      ? weatherData!['sunset']
+                      : '--',
+                ),
                 const Divider(),
-                _buildDetailRow('Moon Phase', weatherData != null && weatherData!.containsKey('moon_phase') ? weatherData!['moon_phase'] : '--'),
+                _buildDetailRow(
+                  'Moon Phase',
+                  weatherData != null && weatherData!.containsKey('moon_phase')
+                      ? weatherData!['moon_phase']
+                      : '--',
+                ),
                 const Divider(),
-                _buildDetailRow('Air Quality', weatherData != null && weatherData!.containsKey('air_quality') ? weatherData!['air_quality'] : '--'),
+                _buildDetailRow(
+                  'Air Quality',
+                  weatherData != null && weatherData!.containsKey('air_quality')
+                      ? weatherData!['air_quality']
+                      : '--',
+                ),
               ],
             ),
           ),
@@ -299,10 +374,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
         children: [
           Text(
             label,
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              color: Colors.grey[700],
-            ),
+            style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[700]),
           ),
           Text(
             value,
@@ -318,7 +390,9 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
   }
 
   Widget _buildWeatherAlerts() {
-    if (weatherData == null || !weatherData!.containsKey('alert_title') || weatherData!['alert_title'] == null) {
+    if (weatherData == null ||
+        !weatherData!.containsKey('alert_title') ||
+        weatherData!['alert_title'] == null) {
       return const SizedBox.shrink();
     }
 
@@ -355,7 +429,8 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
                         ),
                       ),
                       Text(
-                        weatherData!['alert_description'] ?? 'Please check weather conditions',
+                        weatherData!['alert_description'] ??
+                            'Please check weather conditions',
                         style: GoogleFonts.poppins(
                           fontSize: 12,
                           color: Colors.grey[700],
@@ -422,7 +497,12 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
     );
   }
 
-  Widget _buildRecommendationItem(String title, String description, IconData icon, Color color) {
+  Widget _buildRecommendationItem(
+    String title,
+    String description,
+    IconData icon,
+    Color color,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -463,7 +543,9 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
   }
 
   Widget _buildForecastWeather() {
-    if (weatherData == null || !weatherData!.containsKey('forecast') || weatherData!['forecast'] == null) {
+    if (weatherData == null ||
+        !weatherData!.containsKey('forecast') ||
+        weatherData!['forecast'] == null) {
       return SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -478,9 +560,7 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
               ),
             ),
             const SizedBox(height: 16),
-            const Center(
-              child: Text('Forecast data not available'),
-            ),
+            const Center(child: Text('Forecast data not available')),
           ],
         ),
       );
@@ -502,14 +582,16 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
             ),
           ),
           const SizedBox(height: 16),
-          ...forecast.map((day) => WeatherForecastCard(
-            day: day['day'] ?? 'Unknown',
-            date: day['date'] ?? '--/--',
-            highTemp: (day['high_temp'] as num?)?.toDouble() ?? 0.0,
-            lowTemp: (day['low_temp'] as num?)?.toDouble() ?? 0.0,
-            condition: day['condition'] ?? 'Unknown',
-            precipitation: (day['precipitation'] as num?)?.toInt() ?? 0,
-          )),
+          ...forecast.map(
+            (day) => WeatherForecastCard(
+              day: day['day'] ?? 'Unknown',
+              date: day['date'] ?? '--/--',
+              highTemp: (day['high_temp'] as num?)?.toDouble() ?? 0.0,
+              lowTemp: (day['low_temp'] as num?)?.toDouble() ?? 0.0,
+              condition: day['condition'] ?? 'Unknown',
+              precipitation: (day['precipitation'] as num?)?.toInt() ?? 0,
+            ),
+          ),
         ],
       ),
     );
@@ -567,7 +649,13 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
   }
 
   String _getWeatherCondition(int index) {
-    final conditions = ['Sunny', 'Partly Cloudy', 'Cloudy', 'Rainy', 'Thunderstorm'];
+    final conditions = [
+      'Sunny',
+      'Partly Cloudy',
+      'Cloudy',
+      'Rainy',
+      'Thunderstorm',
+    ];
     return conditions[index % conditions.length];
   }
 
@@ -629,7 +717,9 @@ class _WeatherScreenState extends State<WeatherScreen> with TickerProviderStateM
               trailing: const Icon(Icons.arrow_forward_ios),
               onTap: () {
                 setState(() {
-                  _selectedUnit = _selectedUnit == 'Celsius' ? 'Fahrenheit' : 'Celsius';
+                  _selectedUnit = _selectedUnit == 'Celsius'
+                      ? 'Fahrenheit'
+                      : 'Celsius';
                 });
                 Navigator.pop(context);
               },

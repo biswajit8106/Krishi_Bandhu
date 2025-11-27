@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 import '../widgets/weather_info_card.dart';
+import '../widgets/bottom_nav_bar.dart';
 import '../services/api_service.dart';
 
 class IrrigationScreen extends StatefulWidget {
@@ -20,15 +21,21 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
   List<String> _soilTypes = [];
   List<dynamic> _waterUsage = [];
   List<dynamic> _recentEvents = [];
-  
+
   // Form controllers
   final ApiService api = ApiService();
   final TextEditingController _districtController = TextEditingController();
   final TextEditingController _villageController = TextEditingController();
   final TextEditingController _areaController = TextEditingController();
-  final TextEditingController _temperatureController = TextEditingController(text: '28');
-  final TextEditingController _rainfallController = TextEditingController(text: '5');
-  final TextEditingController _dayAfterSowingController = TextEditingController(text: '1');
+  final TextEditingController _temperatureController = TextEditingController(
+    text: '28',
+  );
+  final TextEditingController _rainfallController = TextEditingController(
+    text: '5',
+  );
+  final TextEditingController _dayAfterSowingController = TextEditingController(
+    text: '1',
+  );
   String? _selectedCropType;
   String? _selectedSoilType;
 
@@ -63,7 +70,9 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
     try {
       final res = await api.getWaterUsage(widget.token, days: 30);
       if (res['success'] == true) {
-        setState(() { _waterUsage = res['data'] ?? []; });
+        setState(() {
+          _waterUsage = res['data'] ?? [];
+        });
       }
     } catch (_) {}
   }
@@ -72,7 +81,9 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
     try {
       final res = await api.getRecentIrrigationEvents(widget.token);
       if (res['success'] == true) {
-        setState(() { _recentEvents = res['data'] ?? []; });
+        setState(() {
+          _recentEvents = res['data'] ?? [];
+        });
       }
     } catch (_) {}
   }
@@ -94,7 +105,8 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
       if (profile.containsKey('email')) {
         setState(() {
           _districtController.text = profile['district'] ?? '';
-          _villageController.text = profile['location'] ?? profile['village'] ?? '';
+          _villageController.text =
+              profile['location'] ?? profile['village'] ?? '';
         });
         // Fetch weather after profile is loaded
         await _fetchWeather();
@@ -104,7 +116,9 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
 
   Future<void> _fetchWeather() async {
     try {
-      final city = _villageController.text.trim().isNotEmpty ? _villageController.text : _districtController.text.trim();
+      final city = _villageController.text.trim().isNotEmpty
+          ? _villageController.text
+          : _districtController.text.trim();
       if (city.isEmpty) return;
 
       final data = await api.predictClimate(widget.token);
@@ -134,10 +148,9 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        title: const Text('Smart Irrigation'),
-      ),
+      appBar: AppBar(title: const Text('Smart Irrigation')),
       body: _buildDashboard(),
+      bottomNavigationBar: BottomNavBar(currentIndex: 3, token: widget.token),
     );
   }
 
@@ -172,16 +185,34 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Irrigation Prediction', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(
+              'Irrigation Prediction',
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(height: 12),
-            TextField(controller: _districtController, decoration: const InputDecoration(labelText: 'District')),
+            TextField(
+              controller: _districtController,
+              decoration: const InputDecoration(labelText: 'District'),
+            ),
             const SizedBox(height: 8),
-            TextField(controller: _villageController, decoration: const InputDecoration(labelText: 'Village/City')),
+            TextField(
+              controller: _villageController,
+              decoration: const InputDecoration(labelText: 'Village/City'),
+            ),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
-              value: _selectedCropType,
-              items: (_cropTypes.isNotEmpty ? _cropTypes : ['Rice', 'Wheat', 'Maize', 'Vegetables', 'Orchard'])
-                  .map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+              value: _cropTypes.contains(_selectedCropType)
+                  ? _selectedCropType
+                  : null,
+              items:
+                  (_cropTypes.isNotEmpty
+                          ? _cropTypes
+                          : ['Rice', 'Wheat', 'Maize', 'Vegetables', 'Orchard'])
+                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                      .toList(),
               onChanged: (v) {
                 setState(() => _selectedCropType = v);
                 _saveData();
@@ -190,9 +221,15 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
             ),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
-              value: _selectedSoilType,
-              items: (_soilTypes.isNotEmpty ? _soilTypes : ['Sandy', 'Clay', 'Loam', 'Silt', 'Peaty'])
-                  .map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+              value: _soilTypes.contains(_selectedSoilType)
+                  ? _selectedSoilType
+                  : null,
+              items:
+                  (_soilTypes.isNotEmpty
+                          ? _soilTypes
+                          : ['Sandy', 'Clay', 'Loam', 'Silt', 'Peaty'])
+                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                      .toList(),
               onChanged: (v) {
                 setState(() => _selectedSoilType = v);
                 _saveData();
@@ -200,26 +237,60 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
               decoration: const InputDecoration(labelText: 'Soil Type'),
             ),
             const SizedBox(height: 8),
-            TextField(controller: _areaController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Area (acres)')),
+            TextField(
+              controller: _areaController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Area (acres)'),
+            ),
             const SizedBox(height: 8),
-            TextField(controller: _temperatureController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Temperature (°C)')),
+            TextField(
+              controller: _temperatureController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Temperature (°C)'),
+            ),
             const SizedBox(height: 8),
-            TextField(controller: _rainfallController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Rainfall (mm)')),
+            TextField(
+              controller: _rainfallController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Rainfall (mm)'),
+            ),
             const SizedBox(height: 8),
-            TextField(controller: _dayAfterSowingController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Day After Sowing')),
+            TextField(
+              controller: _dayAfterSowingController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Day After Sowing'),
+            ),
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: _isLoading ? null : _runPrediction,
-                child: _isLoading ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text('Predict'),
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text('Predict'),
               ),
             ),
             if (_predictionText != null) ...[
               const SizedBox(height: 12),
-              Text('Prediction:', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+              Text(
+                'Prediction:',
+                style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+              ),
               const SizedBox(height: 6),
-              Text(_predictionText!, style: GoogleFonts.poppins(fontSize: 16, color: Colors.green[800])),
+              Text(
+                _predictionText!,
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  color: Colors.green[800],
+                ),
+              ),
               Row(
                 children: [
                   ElevatedButton.icon(
@@ -236,7 +307,7 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
                   ),
                 ],
               ),
-            ]
+            ],
           ],
         ),
       ),
@@ -244,12 +315,20 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
   }
 
   Future<void> _runPrediction() async {
-    if (_selectedCropType == null || _selectedSoilType == null || _areaController.text.trim().isEmpty || _temperatureController.text.trim().isEmpty || _rainfallController.text.trim().isEmpty || _dayAfterSowingController.text.trim().isEmpty) {
+    if (_selectedCropType == null ||
+        _selectedSoilType == null ||
+        _areaController.text.trim().isEmpty ||
+        _temperatureController.text.trim().isEmpty ||
+        _rainfallController.text.trim().isEmpty ||
+        _dayAfterSowingController.text.trim().isEmpty) {
       setState(() => _predictionText = 'Please fill required fields');
       return;
     }
 
-    setState(() { _isLoading = true; _predictionText = null; });
+    setState(() {
+      _isLoading = true;
+      _predictionText = null;
+    });
 
     final body = {
       'district': _districtController.text.trim(),
@@ -263,18 +342,25 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
     };
 
     final res = await api.predictIrrigation(widget.token, body);
-    setState(() { _isLoading = false; });
+    setState(() {
+      _isLoading = false;
+    });
 
     if (res.containsKey('liters_required')) {
       setState(() {
-        _predictionText = '${res['liters_required']} ${res['units'] ?? 'liters'}';
-        _dayWiseRequirements = List<dynamic>.from(res['day_wise_requirements'] ?? []);
+        _predictionText =
+            '${res['liters_required']} ${res['units'] ?? 'liters'}';
+        _dayWiseRequirements = List<dynamic>.from(
+          res['day_wise_requirements'] ?? [],
+        );
       });
       _saveData();
     } else if (res.containsKey('prediction')) {
       setState(() {
         _predictionText = jsonEncode(res['prediction']);
-        _dayWiseRequirements = List<dynamic>.from(res['day_wise_requirements'] ?? []);
+        _dayWiseRequirements = List<dynamic>.from(
+          res['day_wise_requirements'] ?? [],
+        );
       });
       _saveData();
     } else if (res.containsKey('success') && res['success'] == false) {
@@ -302,7 +388,11 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
         final liters = (item['liters'] ?? 0).toDouble();
         final parts = dateStr.split('-');
         if (parts.length == 3) {
-          final d = DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+          final d = DateTime(
+            int.parse(parts[0]),
+            int.parse(parts[1]),
+            int.parse(parts[2]),
+          );
           final diff = now.difference(d).inDays;
           if (diff == 0) today += liters;
           if (diff < 7) week += liters;
@@ -331,18 +421,48 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildStatItem('Today', '${today.toStringAsFixed(0)} L', Icons.today, AppTheme.infoColor),
-                    _buildStatItem('This Week', '${week.toStringAsFixed(0)} L', Icons.date_range, AppTheme.primaryColor),
-                    _buildStatItem('This Month', '${month.toStringAsFixed(0)} L', Icons.calendar_month, AppTheme.warningColor),
+                    _buildStatItem(
+                      'Today',
+                      '${today.toStringAsFixed(0)} L',
+                      Icons.today,
+                      AppTheme.infoColor,
+                    ),
+                    _buildStatItem(
+                      'This Week',
+                      '${week.toStringAsFixed(0)} L',
+                      Icons.date_range,
+                      AppTheme.primaryColor,
+                    ),
+                    _buildStatItem(
+                      'This Month',
+                      '${month.toStringAsFixed(0)} L',
+                      Icons.calendar_month,
+                      AppTheme.warningColor,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildStatItem('Efficiency', '92%', Icons.trending_up, AppTheme.successColor),
-                    _buildStatItem('Savings', '15%', Icons.savings, AppTheme.successColor),
-                    _buildStatItem('Cost', '\$45', Icons.attach_money, AppTheme.errorColor),
+                    _buildStatItem(
+                      'Efficiency',
+                      '92%',
+                      Icons.trending_up,
+                      AppTheme.successColor,
+                    ),
+                    _buildStatItem(
+                      'Savings',
+                      '15%',
+                      Icons.savings,
+                      AppTheme.successColor,
+                    ),
+                    _buildStatItem(
+                      'Cost',
+                      '\$45',
+                      Icons.attach_money,
+                      AppTheme.errorColor,
+                    ),
                   ],
                 ),
               ],
@@ -353,7 +473,12 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
     );
   }
 
-  Widget _buildStatItem(String label, String value, IconData icon, Color color) {
+  Widget _buildStatItem(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Column(
       children: [
         Icon(icon, color: color, size: 24),
@@ -368,10 +493,7 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
         ),
         Text(
           label,
-          style: GoogleFonts.poppins(
-            fontSize: 12,
-            color: Colors.grey[600],
-          ),
+          style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600]),
         ),
       ],
     );
@@ -406,15 +528,19 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
                   DataColumn(label: Text('Rain %')),
                 ],
                 rows: _dayWiseRequirements.map<DataRow>((req) {
-                  return DataRow(cells: [
-                    DataCell(Text(req['date'] ?? '')),
-                    DataCell(Text(_selectedCropType ?? '')),
-                    DataCell(Text(_areaController.text)),
-                    DataCell(Text(_selectedSoilType ?? '')),
-                    DataCell(Text((req['water_liters'] ?? 0.0).toStringAsFixed(1))),
-                    DataCell(Text((req['duration_minutes'] ?? 0).toString())),
-                    DataCell(Text('${req['precipitation_percent'] ?? 0}%')),
-                  ]);
+                  return DataRow(
+                    cells: [
+                      DataCell(Text(req['date'] ?? '')),
+                      DataCell(Text(_selectedCropType ?? '')),
+                      DataCell(Text(_areaController.text)),
+                      DataCell(Text(_selectedSoilType ?? '')),
+                      DataCell(
+                        Text((req['water_liters'] ?? 0.0).toStringAsFixed(1)),
+                      ),
+                      DataCell(Text((req['duration_minutes'] ?? 0).toString())),
+                      DataCell(Text('${req['precipitation_percent'] ?? 0}%')),
+                    ],
+                  );
                 }).toList(),
               ),
             ),
@@ -441,14 +567,30 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
-              children: _recentEvents.isNotEmpty ? _recentEvents.map<Widget>((e) => Column(
-                children: [
-                  _buildActivityItem(e['details'] ?? e['type'] ?? 'Activity', e['timestamp'] ?? '', Icons.water_drop, AppTheme.infoColor),
-                  const Divider(),
-                ],
-              )).toList() : [
-                _buildActivityItem('No recent activity', '', Icons.info, AppTheme.infoColor),
-              ],
+              children: _recentEvents.isNotEmpty
+                  ? _recentEvents
+                        .map<Widget>(
+                          (e) => Column(
+                            children: [
+                              _buildActivityItem(
+                                e['details'] ?? e['type'] ?? 'Activity',
+                                e['timestamp'] ?? '',
+                                Icons.water_drop,
+                                AppTheme.infoColor,
+                              ),
+                              const Divider(),
+                            ],
+                          ),
+                        )
+                        .toList()
+                  : [
+                      _buildActivityItem(
+                        'No recent activity',
+                        '',
+                        Icons.info,
+                        AppTheme.infoColor,
+                      ),
+                    ],
             ),
           ),
         ),
@@ -456,7 +598,12 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
     );
   }
 
-  Widget _buildActivityItem(String title, String time, IconData icon, Color color) {
+  Widget _buildActivityItem(
+    String title,
+    String time,
+    IconData icon,
+    Color color,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -531,14 +678,18 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
       _areaController.text = prefs.getString(_areaKey) ?? '';
       _temperatureController.text = prefs.getString(_temperatureKey) ?? '28';
       _rainfallController.text = prefs.getString(_rainfallKey) ?? '5';
-      _dayAfterSowingController.text = prefs.getString(_dayAfterSowingKey) ?? '1';
+      _dayAfterSowingController.text =
+          prefs.getString(_dayAfterSowingKey) ?? '1';
     });
   }
 
   Future<void> _saveData() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_predictionTextKey, _predictionText ?? '');
-    await prefs.setString(_dayWiseRequirementsKey, jsonEncode(_dayWiseRequirements));
+    await prefs.setString(
+      _dayWiseRequirementsKey,
+      jsonEncode(_dayWiseRequirements),
+    );
     await prefs.setString(_selectedCropTypeKey, _selectedCropType ?? '');
     await prefs.setString(_selectedSoilTypeKey, _selectedSoilType ?? '');
     await prefs.setString(_districtKey, _districtController.text);

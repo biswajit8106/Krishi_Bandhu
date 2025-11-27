@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../widgets/chat_message.dart';
 import '../widgets/quick_action_button.dart';
+import '../widgets/bottom_nav_bar.dart';
 
 class AssistantScreen extends StatefulWidget {
   final String token;
@@ -37,10 +38,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
       appBar: AppBar(
         title: const Text('Smart Assistant'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.mic),
-            onPressed: _startVoiceInput,
-          ),
+          IconButton(icon: const Icon(Icons.mic), onPressed: _startVoiceInput),
           IconButton(
             icon: const Icon(Icons.more_vert),
             onPressed: _showOptionsMenu,
@@ -50,12 +48,11 @@ class _AssistantScreenState extends State<AssistantScreen> {
       body: Column(
         children: [
           _buildQuickActions(),
-          Expanded(
-            child: _buildChatList(),
-          ),
+          Expanded(child: _buildChatList()),
           _buildMessageInput(),
         ],
       ),
+      bottomNavigationBar: BottomNavBar(currentIndex: 4, token: widget.token),
     );
   }
 
@@ -91,25 +88,30 @@ class _AssistantScreenState extends State<AssistantScreen> {
                 QuickActionButton(
                   icon: Icons.eco,
                   label: 'Crop Advice',
-                  onTap: () => _sendQuickMessage('Give me advice about my rice crop'),
+                  onTap: () =>
+                      _sendQuickMessage('Give me advice about my rice crop'),
                 ),
                 const SizedBox(width: 8),
                 QuickActionButton(
                   icon: Icons.water_drop,
                   label: 'Irrigation Help',
-                  onTap: () => _sendQuickMessage('Help me with irrigation scheduling'),
+                  onTap: () =>
+                      _sendQuickMessage('Help me with irrigation scheduling'),
                 ),
                 const SizedBox(width: 8),
                 QuickActionButton(
                   icon: Icons.wb_sunny,
                   label: 'Weather Info',
-                  onTap: () => _sendQuickMessage('What\'s the weather forecast for farming?'),
+                  onTap: () => _sendQuickMessage(
+                    'What\'s the weather forecast for farming?',
+                  ),
                 ),
                 const SizedBox(width: 8),
                 QuickActionButton(
                   icon: Icons.bug_report,
                   label: 'Pest Control',
-                  onTap: () => _sendQuickMessage('How to control pests in my field?'),
+                  onTap: () =>
+                      _sendQuickMessage('How to control pests in my field?'),
                 ),
                 const SizedBox(width: 8),
                 QuickActionButton(
@@ -168,7 +170,10 @@ class _AssistantScreenState extends State<AssistantScreen> {
                   borderRadius: BorderRadius.circular(25),
                   borderSide: const BorderSide(color: AppTheme.primaryColor),
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
                 filled: true,
                 fillColor: Colors.grey[50],
               ),
@@ -202,22 +207,23 @@ class _AssistantScreenState extends State<AssistantScreen> {
   }
 
   void _addWelcomeMessage() {
-    _messages.add(ChatMessage(
-      text: 'Hello! I\'m your smart farming assistant. I can help you with crop advice, irrigation, weather information, pest control, and more. How can I assist you today?',
-      isUser: false,
-      timestamp: DateTime.now(),
-    ));
+    _messages.add(
+      ChatMessage(
+        text:
+            'Hello! I\'m your smart farming assistant. I can help you with crop advice, irrigation, weather information, pest control, and more. How can I assist you today?',
+        isUser: false,
+        timestamp: DateTime.now(),
+      ),
+    );
   }
 
   void _sendMessage(String text) {
     if (text.isEmpty) return;
 
     setState(() {
-      _messages.add(ChatMessage(
-        text: text,
-        isUser: true,
-        timestamp: DateTime.now(),
-      ));
+      _messages.add(
+        ChatMessage(text: text, isUser: true, timestamp: DateTime.now()),
+      );
     });
 
     _messageController.clear();
@@ -236,13 +242,11 @@ class _AssistantScreenState extends State<AssistantScreen> {
 
   void _simulateAIResponse(String userMessage) {
     String response = _generateAIResponse(userMessage);
-    
+
     setState(() {
-      _messages.add(ChatMessage(
-        text: response,
-        isUser: false,
-        timestamp: DateTime.now(),
-      ));
+      _messages.add(
+        ChatMessage(text: response, isUser: false, timestamp: DateTime.now()),
+      );
     });
 
     _scrollToBottom();
@@ -250,7 +254,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
 
   String _generateAIResponse(String userMessage) {
     String message = userMessage.toLowerCase();
-    
+
     if (message.contains('rice') || message.contains('crop advice')) {
       return 'For rice cultivation, ensure proper water management with 2-3 inches of standing water during the growing season. Monitor for diseases like rice blast and apply appropriate fungicides. Maintain soil pH between 6.0-7.0 for optimal growth.';
     } else if (message.contains('irrigation') || message.contains('watering')) {
@@ -339,7 +343,9 @@ class _AssistantScreenState extends State<AssistantScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Clear Chat', style: GoogleFonts.poppins()),
-        content: const Text('Are you sure you want to clear all chat messages?'),
+        content: const Text(
+          'Are you sure you want to clear all chat messages?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
