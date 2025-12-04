@@ -210,7 +210,7 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
               items:
                   (_cropTypes.isNotEmpty
                           ? _cropTypes
-                          : ['Rice', 'Wheat', 'Maize', 'Vegetables', 'Orchard'])
+                          : ['Barley', 'Urad', 'Jackfruit', 'Ragi', 'Millet', 'Tea', 'Gram', 'Brinjal', 'Soybean', 'Mango', 'Ladyfinger', 'Moong', 'Papaya', 'Maize', 'Litchi', 'Sugarcane', 'Groundnut', 'Cabbage', 'Sunflower', 'Rice', 'Potato', 'Mustard', 'Arhar', 'Onion', 'Cashew nut', 'Cauliflower', 'Wheat', 'Chilli', 'Tomato', 'Guava'])
                       .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                       .toList(),
               onChanged: (v) {
@@ -227,7 +227,7 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
               items:
                   (_soilTypes.isNotEmpty
                           ? _soilTypes
-                          : ['Sandy', 'Clay', 'Loam', 'Silt', 'Peaty'])
+                          : ['Red Soil', 'Gravelly Loam', 'Alluvial Soil', 'Mixed Loam Soil', 'Black Soil', 'Clay Loam', 'Laterite Soil'])
                       .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                       .toList(),
               onChanged: (v) {
@@ -297,7 +297,7 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
                     onPressed: () async {
                       // Save prediction as an event
                       await api.createIrrigationEvent(widget.token, {
-                        'event_type': 'prediction_saved',
+                        'event_type': 'watered',
                         'details': _predictionText,
                       });
                       _loadRecentActivity();

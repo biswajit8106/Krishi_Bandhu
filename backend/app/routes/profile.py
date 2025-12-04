@@ -3,7 +3,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app import database
 from app.models.user import User
-from app.utils.auth_utils import get_current_user  
+from app.models.irrigation import IrrigationEvent
+from app.utils.auth_utils import get_current_user
 
 router = APIRouter()
 
@@ -33,3 +34,25 @@ def update_profile(
     db.commit()
     db.refresh(current_user)
     return {"msg": "Profile updated", "name": current_user.name}
+
+@router.get("/recent-activities")
+def get_recent_activities(
+    db: Session = Depends(database.get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Fetch recent irrigation events for the user (both irrigation and disease predictions)
+    events = db.query(IrrigationEvent).filter(
+        IrrigationEvent.user_id == current_user.id
+    ).order_by(IrrigationEvent.timestamp.desc()).limit(10).all()
+
+    activities = []
+    for event in events:
+        activities.append({
+            "id": event.id,
+            "event_type": event.event_type,
+            "details": event.details,
+            "water_liters": event.water_liters,
+            "timestamp": event.timestamp.isoformat()
+        })
+
+    return {"activities": activities}

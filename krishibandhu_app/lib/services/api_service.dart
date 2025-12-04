@@ -4,9 +4,9 @@ import 'package:http/http.dart' as http;
 
 // Define the backend base URL
 // const String baseUrl = "http://10.0.2.2:8000"; // For Android emulator
-const String baseUrl = "http://localhost:9999"; // For Web/PC and mobile devices on same network
+// const String baseUrl = "http://10.240.51.103:9999"; // For Web/PC and mobile devices on same network
 // const String localBaseUrl = "https://10.15.83.103:9999"; // For accessing local server over HTTPS
-// const String baseUrl = "http://localhost:9999"; // For devices connected via USB with adb reverse
+const String baseUrl = "http://localhost:9999"; // For devices connected via USB with adb reverse
 
 class ApiService {
   final http.Client client = http.Client();
@@ -249,6 +249,44 @@ class ApiService {
       return jsonDecode(response.body);
     } catch (e) {
       return {"success": false, "msg": e.toString()};
+    }
+  }
+
+  // Refresh Token
+  Future<Map<String, dynamic>> refreshToken(String refreshToken) async {
+    final url = Uri.parse("$baseUrl/auth/refresh");
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"refresh_token": refreshToken}),
+      ).timeout(_timeoutDuration);
+
+      if (response.statusCode == 200) {
+        return {"success": true, "data": jsonDecode(response.body)};
+      } else {
+        return {"success": false, "msg": jsonDecode(response.body)["detail"] ?? "Refresh failed"};
+      }
+    } on TimeoutException {
+      return {"success": false, "msg": "Connection timed out. Please check your network."};
+    } catch (e) {
+      return {"success": false, "msg": e.toString()};
+    }
+  }
+
+  // Get Recent Activities
+  Future<Map<String, dynamic>> getRecentActivities(String token) async {
+    try {
+      final url = Uri.parse("$baseUrl/profile/recent-activities");
+      final response = await client.get(
+        url,
+        headers: {"Authorization": "Bearer $token"},
+      ).timeout(_timeoutDuration);
+      return jsonDecode(response.body);
+    } on TimeoutException {
+      return {"success": false, "msg": "Connection timed out. Please check your network."};
+    } catch (e) {
+      return {"success": false, "msg": "Failed to fetch recent activities: ${e.toString()}"};
     }
   }
 }

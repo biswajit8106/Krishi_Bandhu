@@ -25,12 +25,14 @@ class _HomeScreenState extends State<HomeScreen> {
   final ApiService apiService = ApiService();
   Map<String, dynamic>? weatherData;
   Map<String, dynamic>? userProfile;
+  List<Map<String, dynamic>> recentActivities = [];
 
   @override
   void initState() {
     super.initState();
     _fetchUserProfile();
     _fetchWeather();
+    _fetchRecentActivities();
   }
 
   Future<void> _fetchUserProfile() async {
@@ -64,6 +66,19 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _fetchWeatherForState(String state) async {
     // Since we now use user's location, no need for state-specific fetch
     // The API will use the user's registered location
+  }
+
+  Future<void> _fetchRecentActivities() async {
+    try {
+      final response = await apiService.getRecentActivities(widget.token);
+      if (response.containsKey('activities')) {
+        setState(() {
+          recentActivities = List<Map<String, dynamic>>.from(response['activities']);
+        });
+      }
+    } catch (e) {
+      // Handle error - keep empty list
+    }
   }
 
   @override
@@ -382,33 +397,30 @@ class _HomeScreenState extends State<HomeScreen> {
         Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                _buildActivityItem(
-                  icon: Icons.eco,
-                  title: 'Crop scan completed',
-                  subtitle: 'Rice field - No diseases detected',
-                  time: '1 hours ago',
-                  color: AppTheme.successColor,
-                ),
-                const Divider(),
-                _buildActivityItem(
-                  icon: Icons.water_drop,
-                  title: 'Irrigation scheduled',
-                  subtitle: 'Field A - 30 minutes',
-                  time: 'Long time ago',
-                  color: AppTheme.infoColor,
-                ),
-                const Divider(),
-                _buildActivityItem(
-                  icon: Icons.wb_sunny,
-                  title: 'Weather Forcast',
-                  subtitle: 'Rain expected tomorrow',
-                  time: '12 hours ago',
-                  color: AppTheme.warningColor,
-                ),
-              ],
-            ),
+            child: recentActivities.isEmpty
+                ? Center(
+                    child: Text(
+                      'No recent activities',
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  )
+                : Column(
+                    children: List.generate(
+                      recentActivities.length,
+                      (index) {
+                        final activity = recentActivities[index];
+                        return Column(
+                          children: [
+                            _buildDynamicActivityItem(activity),
+                            if (index < recentActivities.length - 1) const Divider(),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
           ),
         ),
       ],
@@ -463,6 +475,70 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildDynamicActivityItem(Map<String, dynamic> activity) {
+    IconData icon;
+    Color color;
+    String title;
+    String subtitle;
+
+    String eventType = activity['event_type'] ?? '';
+    String details = activity['details']?.toString().toLowerCase() ?? '';
+
+    // Check if this is an irrigation event (either correctly labeled or mislabeled as prediction_saved)
+    bool isIrrigationEvent = eventType == 'watered' ||
+        (eventType == 'prediction_saved' &&
+         (details.contains('liters') || details.contains('l ') || details.contains('water') ||
+          details.contains('irrigation') || RegExp(r'\d+\.?\d*\s*(liters?|l)').hasMatch(details)));
+
+    if (isIrrigationEvent) {
+      icon = Icons.water_drop;
+      color = AppTheme.infoColor;
+      title = 'Irrigation Completed';
+      subtitle = activity['details'] ?? 'Field watered successfully';
+    } else if (eventType == 'prediction_saved') {
+      icon = Icons.eco;
+      color = AppTheme.successColor;
+      title = 'Disease Prediction';
+      subtitle = activity['details'] ?? 'Crop health analyzed';
+    } else {
+      icon = Icons.info;
+      color = AppTheme.primaryColor;
+      title = eventType.isNotEmpty ? eventType : 'Activity';
+      subtitle = activity['details'] ?? 'Recent activity';
+    }
+
+    String time = _formatTimestamp(activity['timestamp']);
+    String waterInfo = activity['water_liters'] != null ? ' (${activity['water_liters']}L)' : '';
+
+    return _buildActivityItem(
+      icon: icon,
+      title: title,
+      subtitle: subtitle + waterInfo,
+      time: time,
+      color: color,
+    );
+  }
+
+  String _formatTimestamp(String timestamp) {
+    try {
+      DateTime dateTime = DateTime.parse(timestamp);
+      DateTime now = DateTime.now();
+      Duration difference = now.difference(dateTime);
+
+      if (difference.inDays > 0) {
+        return '${difference.inDays}d ago';
+      } else if (difference.inHours > 0) {
+        return '${difference.inHours}h ago';
+      } else if (difference.inMinutes > 0) {
+        return '${difference.inMinutes}m ago';
+      } else {
+        return 'Just now';
+      }
+    } catch (e) {
+      return 'Unknown';
+    }
   }
 
   Widget _buildBottomNavigationBar(BuildContext context) {

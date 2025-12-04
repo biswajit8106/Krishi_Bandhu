@@ -14,3 +14,4 @@ requests
 torch
 torchvision
 Pillow
+ultralytics

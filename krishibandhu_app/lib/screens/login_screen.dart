@@ -32,8 +32,9 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => loading = false);
     if (result["success"]) {
       final token = result["data"]["access_token"];
-      // Store token in shared preferences
-      await _storeToken(token);
+      final refreshToken = result["data"]["refresh_token"];
+      // Store tokens in shared preferences
+      await _storeTokens(token, refreshToken);
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => HomeScreen(token: token)),
@@ -48,9 +49,10 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _storeToken(String token) async {
+  Future<void> _storeTokens(String token, String refreshToken) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('token', token);
+    await prefs.setString('refresh_token', refreshToken);
   }
 
   void navigateToSignup() {
