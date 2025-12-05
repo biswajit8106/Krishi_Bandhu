@@ -1,5 +1,6 @@
 # backend/app/models/user.py
 from sqlalchemy import Column, Integer, String
+from sqlalchemy.orm import relationship
 from app.database import Base
 
 class User(Base):
@@ -15,3 +16,6 @@ class User(Base):
     location = Column(String(100))  # City or village name
     language = Column(String(50))
     role = Column(String(50))  # e.g., 'farmer', 'expert', 'admin'
+
+    # Relationship with assistant queries
+    assistant_queries = relationship("AssistantQuery", back_populates="user")

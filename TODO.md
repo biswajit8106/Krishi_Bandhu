@@ -1,11 +1,17 @@
-# TODO: Integrate YOLOv8 Classification Models for Crop Disease Prediction
+# Voice Input/Output Fix Plan
 
-## Tasks to Complete
+## Issues Identified
+- Speech recognition may fail due to audio format issues
+- Audio playback may not work due to incorrect URLs or missing files
+- Continuous listening may not restart properly after responses
+- Error handling is insufficient for voice operations
+- Language support for TTS may be limited
 
-- [x] Update requirements.txt to add 'ultralytics' dependency
-- [x] Modify crop_disease_service.py to import YOLO from ultralytics
-- [x] Update _load_models method to load YOLO models from runs/classify directories with dynamic class names
-- [x] Change preprocess_image method to return PIL Image instead of tensor
-- [x] Update predict method to use model.predict API and extract top1 class, confidence, and probabilities
-- [x] Install updated dependencies using pip install -r requirements.txt
-- [x] Test the prediction endpoint to ensure YOLO models work correctly
+## Tasks
+- [x] Fix audio format conversion for speech recognition (16kHz WAV)
+- [x] Improve error handling in speech recognition
+- [x] Fix audio URL construction and static file serving
+- [x] Add better TTS language mapping
+- [x] Fix continuous listening restart logic
+- [x] Add comprehensive logging for debugging
+- [x] Test voice input and output functionality

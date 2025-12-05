@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 
 // Define the backend base URL
 // const String baseUrl = "http://10.0.2.2:8000"; // For Android emulator
 // const String baseUrl = "http://10.240.51.103:9999"; // For Web/PC and mobile devices on same network
 // const String localBaseUrl = "https://10.15.83.103:9999"; // For accessing local server over HTTPS
-const String baseUrl = "http://localhost:9999"; // For devices connected via USB with adb reverse
+const String baseUrl = "http://10.247.104.103:9999"; // For local development
 
 class ApiService {
   final http.Client client = http.Client();
@@ -287,6 +288,55 @@ class ApiService {
       return {"success": false, "msg": "Connection timed out. Please check your network."};
     } catch (e) {
       return {"success": false, "msg": "Failed to fetch recent activities: ${e.toString()}"};
+    }
+  }
+
+  // Assistant Chat
+  Future<Map<String, dynamic>> assistantChat(String token, String message, String language) async {
+    try {
+      final url = Uri.parse("$baseUrl/assistant/chat");
+      final response = await client.post(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+        body: jsonEncode({
+          "message": message,
+          "language": language,
+        }),
+      ).timeout(_timeoutDuration);
+      return jsonDecode(response.body);
+    } on TimeoutException {
+      return {"success": false, "msg": "Connection timed out. Please check your network."};
+    } catch (e) {
+      return {"success": false, "msg": "Failed to send message: ${e.toString()}"};
+    }
+  }
+
+  // Assistant Voice
+  Future<Map<String, dynamic>> assistantVoice(String token, File audioFile, String language) async {
+    try {
+      final url = Uri.parse("$baseUrl/assistant/voice");
+      final request = http.MultipartRequest("POST", url);
+      request.headers["Authorization"] = "Bearer $token";
+      request.fields["language"] = language;
+      request.files.add(await http.MultipartFile.fromPath("file", audioFile.path));
+
+      final streamed = await request.send();
+      final response = await http.Response.fromStream(streamed);
+      final data = jsonDecode(response.body);
+
+      // Convert relative audio_url to full URL
+      if (data["audio_url"] != null && data["audio_url"].startsWith("/")) {
+        data["audio_url"] = "$baseUrl${data["audio_url"]}";
+      }
+
+      return data;
+    } on TimeoutException {
+      return {"success": false, "msg": "Connection timed out. Please check your network."};
+    } catch (e) {
+      return {"success": false, "msg": "Failed to send voice message: ${e.toString()}"};
     }
   }
 }

@@ -1,5 +1,17 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_sound/flutter_sound.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+
+import '../models/chat_models.dart';
+import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/chat_message.dart';
 import '../widgets/quick_action_button.dart';
@@ -18,30 +30,243 @@ class _AssistantScreenState extends State<AssistantScreen> {
   final ScrollController _scrollController = ScrollController();
   final List<ChatMessage> _messages = [];
 
+  String selectedLanguage = "en";
+  bool isRecording = false;
+  bool isListening = false; // New state for continuous listening
+  String _lastWords = '';
+
+  final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
+  final AudioPlayer _player = AudioPlayer();
+  late stt.SpeechToText _speech;
+
   @override
   void initState() {
     super.initState();
+    _setupRecorder();
+    _setupSpeechToText();
     _addWelcomeMessage();
+    _startContinuousListening();
+  }
+
+  Future<void> _setupRecorder() async {
+    try {
+      await _recorder.openRecorder();
+      await _recorder.setSubscriptionDuration(const Duration(milliseconds: 200));
+      print("Recorder setup successful");
+    } catch (e) {
+      print("Error setting up recorder: $e");
+    }
+  }
+
+  Future<void> _setupSpeechToText() async {
+    _speech = stt.SpeechToText();
+    bool available = await _speech.initialize(
+      onStatus: (val) {
+        print('STT Status: $val');
+        if (val == 'listening') {
+          setState(() => isListening = true);
+        } else if (val == 'notListening') {
+          setState(() => isListening = false);
+        }
+      },
+      onError: (val) {
+        print('STT Error: $val');
+        setState(() => isListening = false);
+        // Auto-retry after error
+        Future.delayed(const Duration(seconds: 1), () {
+          if (!isListening) {
+            _startContinuousListening();
+          }
+        });
+      },
+    );
+    if (available) {
+      print("Speech to text initialized successfully");
+    } else {
+      print("Speech to text not available");
+    }
+  }
+
+  Future<void> _startContinuousListening() async {
+    if (!_speech.isAvailable || isListening) return;
+
+    // Stop any existing listening session first
+    await _stopContinuousListening();
+
+    // Request microphone permission
+    var status = await Permission.microphone.request();
+    if (!status.isGranted) {
+      print("Microphone permission denied");
+      setState(() => isListening = false);
+      return;
+    }
+
+    setState(() => isListening = true);
+
+    try {
+      await _speech.listen(
+        onResult: (val) {
+          setState(() {
+            _lastWords = val.recognizedWords;
+          });
+
+          if (val.finalResult) {
+            // User finished speaking, process the message
+            _processVoiceInput(_lastWords);
+          }
+        },
+        listenFor: const Duration(seconds: 30),
+        pauseFor: const Duration(seconds: 3), // Reduced pause time for better responsiveness
+        partialResults: true,
+        localeId: _getLocaleId(),
+        onSoundLevelChange: (level) {
+          // Show listening indicator when sound is detected
+          if (level > 0.5 && !isListening) {
+            setState(() => isListening = true);
+          }
+        },
+        cancelOnError: true,
+        listenMode: stt.ListenMode.confirmation,
+      );
+    } catch (e) {
+      print("Error starting continuous listening: $e");
+      setState(() => isListening = false);
+      // Retry after a delay
+      await Future.delayed(const Duration(seconds: 2));
+      _startContinuousListening();
+    }
+  }
+
+  Future<void> _stopContinuousListening() async {
+    if (_speech.isListening) {
+      await _speech.stop();
+    }
+    setState(() => isListening = false);
+  }
+
+  String _getLocaleId() {
+    switch (selectedLanguage) {
+      case "en":
+        return "en_US";
+      case "hi":
+        return "hi_IN";
+      case "kn":
+        return "kn_IN";
+      case "te":
+        return "te_IN";
+      case "ta":
+        return "ta_IN";
+      case "mr":
+        return "mr_IN";
+      case "gu":
+        return "gu_IN";
+      case "bn":
+        return "bn_IN";
+      case "pa":
+        return "pa_IN";
+      case "ml":
+        return "ml_IN";
+      case "or":
+        return "or_IN";
+      case "ur":
+        return "ur_IN";
+      default:
+        return "en_US";
+    }
+  }
+
+  Future<void> _processVoiceInput(String speechText) async {
+    if (speechText.isEmpty) return;
+
+    // Show listening indicator
+    setState(() {
+      _messages.add(ChatMessage(
+          text: "🎤 Listening...",
+          isUser: false,
+          timestamp: DateTime.now()));
+    });
+    _scrollToBottom();
+
+    // Send to backend for processing
+    final reply = await _callBackendText(speechText);
+
+    // Remove listening message and add user message
+    setState(() {
+      _messages.removeLast(); // Remove listening message
+      _messages.add(ChatMessage(
+          text: speechText,
+          isUser: true,
+          timestamp: DateTime.now()));
+    });
+
+    // Add AI response
+    setState(() {
+      _messages.add(ChatMessage(
+          text: reply["response"],
+          isUser: false,
+          timestamp: DateTime.now(),
+          audioUrl: reply["audio_url"]));
+    });
+
+    // Play assistant voice
+    if (reply["audio_url"] != null) {
+      _player.play(UrlSource(reply["audio_url"]));
+    }
+
+    _scrollToBottom();
+
+    // Restart listening after response
+    await Future.delayed(const Duration(seconds: 2));
+    _startContinuousListening();
   }
 
   @override
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    _recorder.closeRecorder();
     super.dispose();
   }
+
+  // --------------------------------------------------------------------
+  // UI
+  // --------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text('Smart Assistant'),
+        title: Row(
+          children: [
+            const Text('Smart Assistant'),
+            if (isListening) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.mic, color: Colors.white, size: 16),
+                    SizedBox(width: 4),
+                    Text('Listening', style: TextStyle(color: Colors.white, fontSize: 12)),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
         actions: [
-          IconButton(icon: const Icon(Icons.mic), onPressed: _startVoiceInput),
           IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: _showOptionsMenu,
+            icon: const Icon(Icons.language),
+            onPressed: _showLanguageSelector,
+          ),
+          IconButton(
+            icon: Icon(isRecording ? Icons.mic : Icons.mic_none),
+            onPressed: _toggleRecording,
           ),
         ],
       ),
@@ -59,68 +284,34 @@ class _AssistantScreenState extends State<AssistantScreen> {
   Widget _buildQuickActions() {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+      color: Colors.white,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Quick Actions',
-            style: GoogleFonts.poppins(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[800],
-            ),
-          ),
-          const SizedBox(height: 12),
+          Text("Quick Actions",
+              style: GoogleFonts.poppins(
+                  fontSize: 16, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 10),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                QuickActionButton(
+            child: Row(children: [
+              QuickActionButton(
                   icon: Icons.eco,
-                  label: 'Crop Advice',
-                  onTap: () =>
-                      _sendQuickMessage('Give me advice about my rice crop'),
-                ),
-                const SizedBox(width: 8),
-                QuickActionButton(
+                  label: "Crop Advice",
+                  onTap: () => _sendMessage("Give me advice about my rice crop")),
+              const SizedBox(width: 8),
+              QuickActionButton(
                   icon: Icons.water_drop,
-                  label: 'Irrigation Help',
+                  label: "Irrigation",
                   onTap: () =>
-                      _sendQuickMessage('Help me with irrigation scheduling'),
-                ),
-                const SizedBox(width: 8),
-                QuickActionButton(
+                      _sendMessage("Help me with irrigation scheduling")),
+              const SizedBox(width: 8),
+              QuickActionButton(
                   icon: Icons.wb_sunny,
-                  label: 'Weather Info',
-                  onTap: () => _sendQuickMessage(
-                    'What\'s the weather forecast for farming?',
-                  ),
-                ),
-                const SizedBox(width: 8),
-                QuickActionButton(
-                  icon: Icons.bug_report,
-                  label: 'Pest Control',
+                  label: "Weather",
                   onTap: () =>
-                      _sendQuickMessage('How to control pests in my field?'),
-                ),
-                const SizedBox(width: 8),
-                QuickActionButton(
-                  icon: Icons.analytics,
-                  label: 'Farm Analytics',
-                  onTap: () => _sendQuickMessage('Show me my farm analytics'),
-                ),
-              ],
-            ),
+                      _sendMessage("What is the farming weather today?")),
+            ]),
           ),
         ],
       ),
@@ -140,241 +331,212 @@ class _AssistantScreenState extends State<AssistantScreen> {
 
   Widget _buildMessageInput() {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
+      padding: const EdgeInsets.all(12),
+      color: Colors.white,
       child: Row(
         children: [
           Expanded(
             child: TextField(
               controller: _messageController,
-              decoration: InputDecoration(
-                hintText: 'Ask me anything about farming...',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(25),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(25),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(25),
-                  borderSide: const BorderSide(color: AppTheme.primaryColor),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
-                ),
-                filled: true,
-                fillColor: Colors.grey[50],
-              ),
-              maxLines: null,
-              textInputAction: TextInputAction.send,
-              onSubmitted: (value) {
-                if (value.trim().isNotEmpty) {
-                  _sendMessage(value.trim());
-                }
-              },
+              decoration:
+                  const InputDecoration(hintText: "Ask me anything..."),
+              onSubmitted: (value) => _sendMessage(value.trim()),
             ),
           ),
-          const SizedBox(width: 8),
-          Container(
-            decoration: BoxDecoration(
-              color: AppTheme.primaryColor,
-              shape: BoxShape.circle,
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.send, color: Colors.white),
-              onPressed: () {
-                if (_messageController.text.trim().isNotEmpty) {
-                  _sendMessage(_messageController.text.trim());
-                }
-              },
-            ),
-          ),
+          IconButton(
+            icon: const Icon(Icons.send, color: Colors.green),
+            onPressed: () {
+              _sendMessage(_messageController.text.trim());
+            },
+          )
         ],
       ),
     );
   }
 
+  // --------------------------------------------------------------------
+  // CHAT FUNCTIONALITY
+  // --------------------------------------------------------------------
+
   void _addWelcomeMessage() {
-    _messages.add(
-      ChatMessage(
-        text:
-            'Hello! I\'m your smart farming assistant. I can help you with crop advice, irrigation, weather information, pest control, and more. How can I assist you today?',
-        isUser: false,
-        timestamp: DateTime.now(),
-      ),
-    );
+    setState(() {
+      _messages.add(ChatMessage(
+          text:
+              "Hello! I am your KrishiBandhu Smart Assistant. How can I help you?",
+          isUser: false,
+          timestamp: DateTime.now()));
+    });
+    print("Welcome message added");
   }
 
-  void _sendMessage(String text) {
+  Future<void> _sendMessage(String text) async {
     if (text.isEmpty) return;
 
     setState(() {
-      _messages.add(
-        ChatMessage(text: text, isUser: true, timestamp: DateTime.now()),
-      );
+      _messages.add(ChatMessage(
+          text: text, isUser: true, timestamp: DateTime.now()));
     });
 
     _messageController.clear();
     _scrollToBottom();
 
-    // Simulate AI response
-    Future.delayed(const Duration(seconds: 2), () {
-      _simulateAIResponse(text);
-    });
-  }
-
-  void _sendQuickMessage(String text) {
-    _messageController.text = text;
-    _sendMessage(text);
-  }
-
-  void _simulateAIResponse(String userMessage) {
-    String response = _generateAIResponse(userMessage);
+    // Send text to backend
+    final reply = await _callBackendText(text);
 
     setState(() {
-      _messages.add(
-        ChatMessage(text: response, isUser: false, timestamp: DateTime.now()),
-      );
+      _messages.add(ChatMessage(
+          text: reply["response"],
+          isUser: false,
+          timestamp: DateTime.now(),
+          audioUrl: reply["audio_url"]));
     });
+
+    // Play assistant voice
+    if (reply["audio_url"] != null) {
+      _player.play(UrlSource(reply["audio_url"]));
+    }
 
     _scrollToBottom();
   }
 
-  String _generateAIResponse(String userMessage) {
-    String message = userMessage.toLowerCase();
+  Future<Map<String, dynamic>> _callBackendText(String prompt) async {
+    final apiService = ApiService();
+    return await apiService.assistantChat(widget.token, prompt, selectedLanguage);
+  }
 
-    if (message.contains('rice') || message.contains('crop advice')) {
-      return 'For rice cultivation, ensure proper water management with 2-3 inches of standing water during the growing season. Monitor for diseases like rice blast and apply appropriate fungicides. Maintain soil pH between 6.0-7.0 for optimal growth.';
-    } else if (message.contains('irrigation') || message.contains('watering')) {
-      return 'Based on current soil moisture levels, I recommend watering Zone A for 30 minutes and Zone B for 20 minutes. The optimal irrigation schedule is early morning (6 AM) and evening (6 PM) to minimize water loss through evaporation.';
-    } else if (message.contains('weather') || message.contains('forecast')) {
-      return 'The weather forecast shows sunny conditions for the next 3 days with temperatures ranging from 25-30°C. Light rain is expected on Friday. This is ideal weather for crop growth. Consider scheduling irrigation before the rain to maximize water efficiency.';
-    } else if (message.contains('pest') || message.contains('insect')) {
-      return 'For pest control, I recommend using integrated pest management (IPM) techniques. Monitor your fields regularly for signs of infestation. Use biological controls like beneficial insects first, then consider organic pesticides if needed. Avoid chemical pesticides during flowering periods.';
-    } else if (message.contains('analytics') || message.contains('data')) {
-      return 'Your farm analytics show: Crop health at 85%, Soil moisture averaging 68%, Water usage efficiency at 92%, and projected yield increase of 15% compared to last season. Your irrigation system is performing optimally.';
-    } else if (message.contains('soil') || message.contains('fertilizer')) {
-      return 'For soil health, I recommend testing your soil every 3 months. Based on your crop rotation, apply nitrogen-rich fertilizer during the growing season. Consider using organic compost to improve soil structure and water retention.';
-    } else if (message.contains('disease') || message.contains('sick')) {
-      return 'If you suspect plant diseases, take clear photos of affected leaves and upload them to the crop disease detection feature. Early detection is crucial for effective treatment. Common signs include discolored leaves, spots, wilting, or unusual growth patterns.';
+  // --------------------------------------------------------------------
+  // VOICE RECORDING + BACKEND SEND
+  // --------------------------------------------------------------------
+
+  Future<void> _toggleRecording() async {
+    if (!isRecording) {
+      // Request microphone permission
+      var status = await Permission.microphone.request();
+      if (status.isGranted) {
+        await _startRecording();
+      } else {
+        // Show a snackbar or dialog to inform user
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Microphone permission is required for voice input')),
+        );
+      }
     } else {
-      return 'I understand you\'re asking about "$userMessage". While I have extensive knowledge about farming practices, crop management, irrigation, weather patterns, and pest control, I\'d be happy to provide more specific information if you could clarify your question. You can also use the quick action buttons above for common farming topics.';
+      await _stopRecording();
     }
   }
+
+  Future<void> _startRecording() async {
+    setState(() => isRecording = true);
+
+    // Add welcome message when starting recording
+    setState(() {
+      _messages.add(ChatMessage(
+          text: "Welcome to KrishiBandhu Assistant! How can I help you today?",
+          isUser: false,
+          timestamp: DateTime.now()));
+    });
+    _scrollToBottom();
+
+    final directory = await getApplicationDocumentsDirectory();
+    final filePath = '${directory.path}/voice_input.wav';
+
+    await _recorder.startRecorder(
+      toFile: filePath,
+      codec: Codec.pcm16WAV,
+    );
+  }
+
+  Future<void> _stopRecording() async {
+    setState(() => isRecording = false);
+
+    final path = await _recorder.stopRecorder();
+    final audioFile = File(path!);
+
+    await _sendVoiceToBackend(audioFile);
+  }
+
+  Future<void> _sendVoiceToBackend(File audio) async {
+    final apiService = ApiService();
+    final data = await apiService.assistantVoice(widget.token, audio, selectedLanguage);
+
+    // Show user speech text
+    setState(() {
+      _messages.add(ChatMessage(
+          text: data["user_voice_text"],
+          isUser: true,
+          timestamp: DateTime.now()));
+    });
+
+    // Show AI response
+    setState(() {
+      _messages.add(ChatMessage(
+          text: data["response"],
+          isUser: false,
+          timestamp: DateTime.now(),
+          audioUrl: data["audio_url"]));
+    });
+
+    // Play voice response
+    if (data["audio_url"] != null) {
+      try {
+        await _player.play(UrlSource(data["audio_url"]));
+        print("Playing audio from: ${data["audio_url"]}");
+      } catch (e) {
+        print("Error playing audio: $e");
+        // Show error message to user
+        setState(() {
+          _messages.add(ChatMessage(
+              text: "Audio playback failed. Please check your connection.",
+              isUser: false,
+              timestamp: DateTime.now()));
+        });
+        _scrollToBottom();
+      }
+    }
+
+    _scrollToBottom();
+  }
+
+  // --------------------------------------------------------------------
+  // LANGUAGE SELECTOR
+  // --------------------------------------------------------------------
+
+  void _showLanguageSelector() {
+    showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+              title: const Text("Choose Language"),
+              content: Column(mainAxisSize: MainAxisSize.min, children: [
+                _langTile("English", "en"),
+                _langTile("Hindi (हिंदी)", "hi"),
+                _langTile("Odia (ଓଡ଼ିଆ)", "or"),
+                _langTile("Bengali (বাংলা)", "bn"),
+              ]),
+            ));
+  }
+
+  Widget _langTile(String title, String code) {
+    return ListTile(
+      title: Text(title),
+      trailing:
+          selectedLanguage == code ? const Icon(Icons.check_circle) : null,
+      onTap: () {
+        setState(() => selectedLanguage = code);
+        Navigator.pop(context);
+      },
+    );
+  }
+
+  // --------------------------------------------------------------------
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut);
       }
     });
   }
-
-  void _startVoiceInput() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Voice input feature coming soon!')),
-    );
-  }
-
-  void _showOptionsMenu() {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.history),
-              title: const Text('Chat History'),
-              onTap: () {
-                Navigator.pop(context);
-                // Show chat history
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.clear_all),
-              title: const Text('Clear Chat'),
-              onTap: () {
-                Navigator.pop(context);
-                _clearChat();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.settings),
-              title: const Text('Assistant Settings'),
-              onTap: () {
-                Navigator.pop(context);
-                // Show settings
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.help),
-              title: const Text('Help & Support'),
-              onTap: () {
-                Navigator.pop(context);
-                // Show help
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _clearChat() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Clear Chat', style: GoogleFonts.poppins()),
-        content: const Text(
-          'Are you sure you want to clear all chat messages?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                _messages.clear();
-                _addWelcomeMessage();
-              });
-            },
-            child: const Text('Clear'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class ChatMessage {
-  final String text;
-  final bool isUser;
-  final DateTime timestamp;
-
-  ChatMessage({
-    required this.text,
-    required this.isUser,
-    required this.timestamp,
-  });
 }

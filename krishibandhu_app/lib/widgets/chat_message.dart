@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
-import '../krishi_screens/assistant_screen.dart';
+import '../models/chat_models.dart';
 
 class ChatMessageWidget extends StatelessWidget {
   final ChatMessage message;
