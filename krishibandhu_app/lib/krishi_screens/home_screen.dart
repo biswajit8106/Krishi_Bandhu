@@ -4,7 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../theme/app_theme.dart';
 import '../widgets/feature_card.dart';
 import '../widgets/weather_card.dart';
-import '../widgets/quick_stats_card.dart';
+// import '../widgets/quick_stats_card.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../services/api_service.dart';
 import 'crop_disease_screen.dart';
@@ -12,6 +12,11 @@ import 'weather_screen.dart';
 import 'irrigation_screen.dart';
 import 'assistant_screen.dart';
 import 'profile_screen.dart';
+import 'feedback_page.dart';
+import 'contact_support.dart';
+import 'terms_conditions.dart';
+import 'about_page.dart';
+import 'settings_page.dart';
 
 class HomeScreen extends StatefulWidget {
   final String token;
@@ -25,14 +30,12 @@ class _HomeScreenState extends State<HomeScreen> {
   final ApiService apiService = ApiService();
   Map<String, dynamic>? weatherData;
   Map<String, dynamic>? userProfile;
-  List<Map<String, dynamic>> recentActivities = [];
 
   @override
   void initState() {
     super.initState();
     _fetchUserProfile();
     _fetchWeather();
-    _fetchRecentActivities();
   }
 
   Future<void> _fetchUserProfile() async {
@@ -68,23 +71,10 @@ class _HomeScreenState extends State<HomeScreen> {
     // The API will use the user's registered location
   }
 
-  Future<void> _fetchRecentActivities() async {
-    try {
-      final response = await apiService.getRecentActivities(widget.token);
-      if (response.containsKey('activities')) {
-        setState(() {
-          recentActivities = List<Map<String, dynamic>>.from(response['activities']);
-        });
-      }
-    } catch (e) {
-      // Handle error - keep empty list
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
       bottomNavigationBar: _buildBottomNavigationBar(context),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -92,7 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildProfileButton(context),
+              _buildTopBar(context),
               const SizedBox(height: 16),
               _buildHeader(
                 context,
@@ -124,40 +114,107 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildProfileButton(BuildContext context) {
-    return Align(
-      alignment: Alignment.topLeft,
-      child: GestureDetector(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ProfileScreen(token: widget.token),
-            ),
-          );
-        },
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppTheme.primaryColor,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.primaryColor.withOpacity(0.3),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
+  Widget _buildTopBar(BuildContext context) {
+    return Row(
+      children: [
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ProfileScreen(token: widget.token),
               ),
-            ],
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.primaryColor.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: const Icon(Icons.person, color: Colors.white, size: 24),
           ),
-          child: const Icon(Icons.person, color: Colors.white, size: 24),
         ),
-      ),
+        const Spacer(),
+        PopupMenuButton<String>(
+          icon: const Icon(Icons.more_vert, color: Colors.grey),
+          onSelected: (value) {
+            switch (value) {
+              case 'feedback':
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => FeedbackPage(token: widget.token),
+                  ),
+                );
+                break;
+              case 'contact':
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        ContactSupportPage(token: widget.token),
+                  ),
+                );
+                break;
+              case 'terms':
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        TermsConditionsPage(token: widget.token),
+                  ),
+                );
+                break;
+              case 'about':
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AboutPage(token: widget.token),
+                  ),
+                );
+                break;
+              case 'settings':
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SettingsPage(token: widget.token),
+                  ),
+                );
+                break;
+            }
+          },
+          itemBuilder: (context) => [
+            const PopupMenuItem(
+              value: 'feedback',
+              child: Text('Give Feedback'),
+            ),
+            const PopupMenuItem(
+              value: 'contact',
+              child: Text('Contact & Support'),
+            ),
+            const PopupMenuItem(
+              value: 'terms',
+              child: Text('Terms & Conditions'),
+            ),
+            const PopupMenuItem(value: 'about', child: Text('About')),
+            const PopupMenuItem(value: 'settings', child: Text('Settings')),
+          ],
+        ),
+      ],
     );
   }
 
   Widget _buildHeader(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: AppTheme.primaryGradient,
@@ -182,16 +239,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(
                   'Welcome to KrishiBandhu',
                   style: GoogleFonts.poppins(
-                    fontSize: 24,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: const Color.fromARGB(255, 255, 255, 255),
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Smart Agriculture Solutions',
                   style: GoogleFonts.poppins(
-                    fontSize: 16,
+                    fontSize: 14,
                     color: Colors.white.withOpacity(0.9),
                   ),
                 ),
@@ -208,7 +265,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Text(
                     'Status: Active',
                     style: GoogleFonts.poppins(
-                      fontSize: 12,
+                      fontSize: 10,
                       color: Colors.white,
                       fontWeight: FontWeight.w500,
                     ),
@@ -240,66 +297,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ],
     );
   }
-
-  // Widget _buildQuickStats() {
-  //   return Column(
-  //     crossAxisAlignment: CrossAxisAlignment.start,
-  //     children: [
-  //       Text(
-  //         'Quick Stats',
-  //         style: GoogleFonts.poppins(
-  //           fontSize: 20,
-  //           fontWeight: FontWeight.w600,
-  //           color: Colors.grey[800],
-  //         ),
-  //       ),
-  //       const SizedBox(height: 12),
-  //       Row(
-  //         children: [
-  //           Expanded(
-  //             child: QuickStatsCard(
-  //               title: 'Crop Health',
-  //               value: '85%',
-  //               icon: Icons.eco,
-  //               color: AppTheme.successColor,
-  //             ),
-  //           ),
-  //           const SizedBox(width: 12),
-  //           Expanded(
-  //             child: QuickStatsCard(
-  //               title: 'Soil Moisture',
-  //               value: '72%',
-  //               icon: Icons.water_drop,
-  //               color: AppTheme.infoColor,
-  //             ),
-  //           ),
-  //         ],
-  //       ),
-  //       const SizedBox(height: 12),
-  //       Row(
-  //         children: [
-  //           Expanded(
-  //             child: QuickStatsCard(
-  //               title: 'Irrigation',
-  //               value: 'Active',
-  //               icon: Icons.water_drop,
-  //               color: AppTheme.primaryColor,
-  //             ),
-  //           ),
-  //           const SizedBox(width: 12),
-  //           Expanded(
-  //             child: QuickStatsCard(
-  //               title: 'Yield Prediction',
-  //               value: '2.5T',
-  //               icon: Icons.trending_up,
-  //               color: AppTheme.warningColor,
-  //             ),
-  //           ),
-  //         ],
-  //       ),
-  //     ],
-  //   );
-  // }
 
   Widget _buildFeaturesSection(BuildContext context) {
     return Column(
@@ -397,30 +394,33 @@ class _HomeScreenState extends State<HomeScreen> {
         Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: recentActivities.isEmpty
-                ? Center(
-                    child: Text(
-                      'No recent activities',
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  )
-                : Column(
-                    children: List.generate(
-                      recentActivities.length,
-                      (index) {
-                        final activity = recentActivities[index];
-                        return Column(
-                          children: [
-                            _buildDynamicActivityItem(activity),
-                            if (index < recentActivities.length - 1) const Divider(),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
+            child: Column(
+              children: [
+                _buildActivityItem(
+                  icon: Icons.eco,
+                  title: 'Crop scan completed',
+                  subtitle: 'Rice field - Diseases detected',
+                  time: '1 hours ago',
+                  color: AppTheme.successColor,
+                ),
+                const Divider(),
+                _buildActivityItem(
+                  icon: Icons.water_drop,
+                  title: 'Irrigation scheduled',
+                  subtitle: 'Field  - 30 minutes',
+                  time: 'Long time ago',
+                  color: AppTheme.infoColor,
+                ),
+                const Divider(),
+                _buildActivityItem(
+                  icon: Icons.wb_sunny,
+                  title: 'Weather Forcast',
+                  subtitle: 'Rain expected tomorrow',
+                  time: '12 hours ago',
+                  color: AppTheme.warningColor,
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -475,70 +475,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
-  }
-
-  Widget _buildDynamicActivityItem(Map<String, dynamic> activity) {
-    IconData icon;
-    Color color;
-    String title;
-    String subtitle;
-
-    String eventType = activity['event_type'] ?? '';
-    String details = activity['details']?.toString().toLowerCase() ?? '';
-
-    // Check if this is an irrigation event (either correctly labeled or mislabeled as prediction_saved)
-    bool isIrrigationEvent = eventType == 'watered' ||
-        (eventType == 'prediction_saved' &&
-         (details.contains('liters') || details.contains('l ') || details.contains('water') ||
-          details.contains('irrigation') || RegExp(r'\d+\.?\d*\s*(liters?|l)').hasMatch(details)));
-
-    if (isIrrigationEvent) {
-      icon = Icons.water_drop;
-      color = AppTheme.infoColor;
-      title = 'Irrigation Completed';
-      subtitle = activity['details'] ?? 'Field watered successfully';
-    } else if (eventType == 'prediction_saved') {
-      icon = Icons.eco;
-      color = AppTheme.successColor;
-      title = 'Disease Prediction';
-      subtitle = activity['details'] ?? 'Crop health analyzed';
-    } else {
-      icon = Icons.info;
-      color = AppTheme.primaryColor;
-      title = eventType.isNotEmpty ? eventType : 'Activity';
-      subtitle = activity['details'] ?? 'Recent activity';
-    }
-
-    String time = _formatTimestamp(activity['timestamp']);
-    String waterInfo = activity['water_liters'] != null ? ' (${activity['water_liters']}L)' : '';
-
-    return _buildActivityItem(
-      icon: icon,
-      title: title,
-      subtitle: subtitle + waterInfo,
-      time: time,
-      color: color,
-    );
-  }
-
-  String _formatTimestamp(String timestamp) {
-    try {
-      DateTime dateTime = DateTime.parse(timestamp);
-      DateTime now = DateTime.now();
-      Duration difference = now.difference(dateTime);
-
-      if (difference.inDays > 0) {
-        return '${difference.inDays}d ago';
-      } else if (difference.inHours > 0) {
-        return '${difference.inHours}h ago';
-      } else if (difference.inMinutes > 0) {
-        return '${difference.inMinutes}m ago';
-      } else {
-        return 'Just now';
-      }
-    } catch (e) {
-      return 'Unknown';
-    }
   }
 
   Widget _buildBottomNavigationBar(BuildContext context) {
