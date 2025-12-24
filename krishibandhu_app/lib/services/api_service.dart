@@ -2,16 +2,24 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import '../helpers/language_helper.dart';
 
 // Define the backend base URL
 // const String baseUrl = "http://10.0.2.2:8000"; // For Android emulator
-// const String baseUrl = "http://10.240.51.103:9999"; // For Web/PC and mobile devices on same network
+const String baseUrl =
+    "http://10.90.218.103:9999"; // For Web/PC and mobile devices on same network
 // const String localBaseUrl = "https://10.15.83.103:9999"; // For accessing local server over HTTPS
-const String baseUrl = "http://10.247.104.103:9999"; // For local development
+// const String baseUrl = "http://10.164.152.146:9999"; // For local development
 
 class ApiService {
   final http.Client client = http.Client();
-  final Duration _timeoutDuration = const Duration(seconds: 10);
+  final Duration _timeoutDuration = const Duration(seconds: 15);
+
+  // Helper method to construct full image URL
+  String getFullImageUrl(String? imagePath) {
+    if (imagePath == null || imagePath.isEmpty) return '';
+    return '$baseUrl$imagePath';
+  }
 
   // Signup
   Future<Map<String, dynamic>> signup({
@@ -26,20 +34,22 @@ class ApiService {
   }) async {
     final url = Uri.parse("$baseUrl/auth/signup");
     try {
-      final response = await http.post(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "name": name,
-          "phone": phone,
-          "email": email,
-          "password": password,
-          "state": state,
-          "district": district,
-          "location": location,
-          "language": language,
-        }),
-      ).timeout(_timeoutDuration);
+      final response = await http
+          .post(
+            url,
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode({
+              "name": name,
+              "phone": phone,
+              "email": email,
+              "password": password,
+              "state": state,
+              "district": district,
+              "location": location,
+              "language": language,
+            }),
+          )
+          .timeout(_timeoutDuration);
 
       final data = jsonDecode(response.body);
       if (response.statusCode == 200) {
@@ -48,7 +58,10 @@ class ApiService {
         return {"success": false, "msg": data["detail"] ?? "Signup failed"};
       }
     } on TimeoutException {
-      return {"success": false, "msg": "Connection timed out. Please check your network."};
+      return {
+        "success": false,
+        "msg": "Connection timed out. Please check your network.",
+      };
     } catch (e) {
       return {"success": false, "msg": e.toString()};
     }
@@ -58,48 +71,105 @@ class ApiService {
   Future<Map<String, dynamic>> login(String identifier, String password) async {
     final url = Uri.parse("$baseUrl/auth/login");
     try {
-      final response = await http.post(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"identifier": identifier, "password": password}),
-      ).timeout(_timeoutDuration);
+      final response = await http
+          .post(
+            url,
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode({"identifier": identifier, "password": password}),
+          )
+          .timeout(_timeoutDuration);
 
       if (response.statusCode == 200) {
         return {"success": true, "data": jsonDecode(response.body)};
       } else {
-        return {"success": false, "msg": jsonDecode(response.body)["detail"] ?? "Login failed"};
+        return {
+          "success": false,
+          "msg": jsonDecode(response.body)["detail"] ?? "Login failed",
+        };
       }
     } on TimeoutException {
-      return {"success": false, "msg": "Connection timed out. Please check your network."};
+      return {
+        "success": false,
+        "msg": "Connection timed out. Please check your network.",
+      };
     } catch (e) {
       return {"success": false, "msg": e.toString()};
     }
   }
 
   // Crop Disease Prediction
-  Future<Map<String, dynamic>> predictDisease(String token, String cropType, String imageBase64) async {
+  Future<Map<String, dynamic>> predictDisease(
+    String token,
+    String cropType,
+    String imageBase64,
+  ) async {
     final url = Uri.parse("$baseUrl/disease/predict");
     try {
-      final response = await client.post(
-        url,
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          "Authorization": "Bearer $token",
-        },
-        body: {
-          "crop_type": cropType,
-          "file": imageBase64,
-        },
-      ).timeout(_timeoutDuration);
+      final response = await client
+          .post(
+            url,
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+              "Authorization": "Bearer $token",
+            },
+            body: {"crop_type": cropType, "file": imageBase64},
+          )
+          .timeout(_timeoutDuration);
       final data = jsonDecode(response.body);
       if (response.statusCode == 200) {
-        // Return success with prediction and confidence data
+        // Normalize backend response keys so UI can rely on consistent fields
+        try {
+          // Ensure both `prediction` and `predicted_class` are available
+          if (data is Map<String, dynamic>) {
+            if (data.containsKey('predicted_class') &&
+                !data.containsKey('prediction')) {
+              data['prediction'] = data['predicted_class'];
+            }
+
+            // Guarantee recommendation & prevention exist to avoid null checks in UI
+            if (!data.containsKey('recommendation'))
+              data['recommendation'] = '';
+            if (!data.containsKey('prevention')) data['prevention'] = '';
+
+            // Also support backend returning 'prediction' only but frontend reading 'predicted_class'
+            if (data.containsKey('prediction') &&
+                !data.containsKey('predicted_class')) {
+              data['predicted_class'] = data['prediction'];
+            }
+          }
+        } catch (_) {}
+
+        // Debug log to make it easy to inspect API shape while testing
+        try {
+          // ignore: avoid_print
+          print(
+            '[ApiService] predictDisease response keys: ' +
+                (data is Map ? data.keys.toString() : data.toString()),
+          );
+          if (data is Map) {
+            // ignore: avoid_print
+            print(
+              '[ApiService] recommendation: ' +
+                  (data['recommendation']?.toString() ?? '<null>'),
+            );
+            // ignore: avoid_print
+            print(
+              '[ApiService] prevention: ' +
+                  (data['prevention']?.toString() ?? '<null>'),
+            );
+          }
+        } catch (_) {}
+
+        // Return success with normalized data
         return {"success": true, "data": data};
       } else {
         return {"success": false, "msg": data["error"] ?? "Prediction failed"};
       }
     } on TimeoutException {
-      return {"success": false, "msg": "Connection timed out. Please check your network."};
+      return {
+        "success": false,
+        "msg": "Connection timed out. Please check your network.",
+      };
     } catch (e) {
       return {"success": false, "msg": "An error occurred: ${e.toString()}"};
     }
@@ -120,10 +190,9 @@ class ApiService {
   Future<Map<String, dynamic>> predictClimate(String token) async {
     try {
       final url = Uri.parse("$baseUrl/climate/predict");
-      final response = await client.get(
-        url,
-        headers: {"Authorization": "Bearer $token"},
-      ).timeout(_timeoutDuration);
+      final response = await client
+          .get(url, headers: {"Authorization": "Bearer $token"})
+          .timeout(_timeoutDuration);
 
       final decoded = jsonDecode(response.body);
       // Normalize responses: if backend returns non-200 (e.g. authentication error)
@@ -133,13 +202,22 @@ class ApiService {
       } else {
         return {
           "success": false,
-          "msg": decoded["detail"] ?? decoded["msg"] ?? "Failed to fetch weather (status ${response.statusCode})"
+          "msg":
+              decoded["detail"] ??
+              decoded["msg"] ??
+              "Failed to fetch weather (status ${response.statusCode})",
         };
       }
     } on TimeoutException {
-      return {"success": false, "msg": "Connection timed out. Please check your network."};
+      return {
+        "success": false,
+        "msg": "Connection timed out. Please check your network.",
+      };
     } catch (e) {
-      return {"success": false, "msg": "Failed to fetch weather: ${e.toString()}"};
+      return {
+        "success": false,
+        "msg": "Failed to fetch weather: ${e.toString()}",
+      };
     }
   }
 
@@ -147,36 +225,46 @@ class ApiService {
   Future<Map<String, dynamic>> getProfile(String token) async {
     try {
       final url = Uri.parse("$baseUrl/profile/me");
-      final response = await client.get(
-        url,
-        headers: {"Authorization": "Bearer $token"},
-      ).timeout(_timeoutDuration);
+      final response = await client
+          .get(url, headers: {"Authorization": "Bearer $token"})
+          .timeout(_timeoutDuration);
       return jsonDecode(response.body);
     } on TimeoutException {
-      return {"success": false, "msg": "Connection timed out. Please check your network."};
+      return {
+        "success": false,
+        "msg": "Connection timed out. Please check your network.",
+      };
     } catch (e) {
       return {"success": false, "msg": "An error occurred: ${e.toString()}"};
     }
   }
 
   // Irrigation Prediction
-  Future<Map<String, dynamic>> predictIrrigation(String token, Map<String, dynamic> body) async {
+  Future<Map<String, dynamic>> predictIrrigation(
+    String token,
+    Map<String, dynamic> body,
+  ) async {
     try {
       final url = Uri.parse("$baseUrl/predict_irrigation");
-      final response = await client.post(
-        url,
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $token",
-        },
-        body: jsonEncode(body),
-      ).timeout(_timeoutDuration);
+      final response = await client
+          .post(
+            url,
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer $token",
+            },
+            body: jsonEncode(body),
+          )
+          .timeout(_timeoutDuration);
 
       // Try decode
       final decoded = jsonDecode(response.body);
       return decoded;
     } on TimeoutException {
-      return {"success": false, "msg": "Connection timed out. Please check your network."};
+      return {
+        "success": false,
+        "msg": "Connection timed out. Please check your network.",
+      };
     } catch (e) {
       return {"success": false, "msg": "An error occurred: ${e.toString()}"};
     }
@@ -196,17 +284,31 @@ class ApiService {
   Future<Map<String, dynamic>> getIrrigationSchedules(String token) async {
     try {
       final url = Uri.parse("$baseUrl/irrigation/schedules");
-      final response = await client.get(url, headers: {"Authorization": "Bearer $token"}).timeout(_timeoutDuration);
+      final response = await client
+          .get(url, headers: {"Authorization": "Bearer $token"})
+          .timeout(_timeoutDuration);
       return {"success": true, "data": jsonDecode(response.body)};
     } catch (e) {
       return {"success": false, "msg": e.toString()};
     }
   }
 
-  Future<Map<String, dynamic>> createIrrigationSchedule(String token, Map<String, dynamic> body) async {
+  Future<Map<String, dynamic>> createIrrigationSchedule(
+    String token,
+    Map<String, dynamic> body,
+  ) async {
     try {
       final url = Uri.parse("$baseUrl/irrigation/schedules");
-      final response = await client.post(url, headers: {"Content-Type": "application/json", "Authorization": "Bearer $token"}, body: jsonEncode(body)).timeout(_timeoutDuration);
+      final response = await client
+          .post(
+            url,
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer $token",
+            },
+            body: jsonEncode(body),
+          )
+          .timeout(_timeoutDuration);
       return jsonDecode(response.body);
     } catch (e) {
       return {"success": false, "msg": e.toString()};
@@ -216,37 +318,68 @@ class ApiService {
   Future<Map<String, dynamic>> getRecentIrrigationEvents(String token) async {
     try {
       final url = Uri.parse("$baseUrl/irrigation/events");
-      final response = await client.get(url, headers: {"Authorization": "Bearer $token"}).timeout(_timeoutDuration);
+      final response = await client
+          .get(url, headers: {"Authorization": "Bearer $token"})
+          .timeout(_timeoutDuration);
       return {"success": true, "data": jsonDecode(response.body)};
     } catch (e) {
       return {"success": false, "msg": e.toString()};
     }
   }
 
-  Future<Map<String, dynamic>> createIrrigationEvent(String token, Map<String, dynamic> body) async {
+  Future<Map<String, dynamic>> createIrrigationEvent(
+    String token,
+    Map<String, dynamic> body,
+  ) async {
     try {
       final url = Uri.parse("$baseUrl/irrigation/events");
-      final response = await client.post(url, headers: {"Content-Type": "application/json", "Authorization": "Bearer $token"}, body: jsonEncode(body)).timeout(_timeoutDuration);
+      final response = await client
+          .post(
+            url,
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer $token",
+            },
+            body: jsonEncode(body),
+          )
+          .timeout(_timeoutDuration);
       return jsonDecode(response.body);
     } catch (e) {
       return {"success": false, "msg": e.toString()};
     }
   }
 
-  Future<Map<String, dynamic>> getWaterUsage(String token, {int days = 7}) async {
+  Future<Map<String, dynamic>> getWaterUsage(
+    String token, {
+    int days = 7,
+  }) async {
     try {
       final url = Uri.parse("$baseUrl/irrigation/water_usage?days=$days");
-      final response = await client.get(url, headers: {"Authorization": "Bearer $token"}).timeout(_timeoutDuration);
+      final response = await client
+          .get(url, headers: {"Authorization": "Bearer $token"})
+          .timeout(_timeoutDuration);
       return {"success": true, "data": jsonDecode(response.body)};
     } catch (e) {
       return {"success": false, "msg": e.toString()};
     }
   }
 
-  Future<Map<String, dynamic>> generateAISchedule(String token, Map<String, dynamic> body) async {
+  Future<Map<String, dynamic>> generateAISchedule(
+    String token,
+    Map<String, dynamic> body,
+  ) async {
     try {
       final url = Uri.parse("$baseUrl/irrigation/generate_schedule_ai");
-      final response = await client.post(url, headers: {"Content-Type": "application/json", "Authorization": "Bearer $token"}, body: jsonEncode(body)).timeout(_timeoutDuration);
+      final response = await client
+          .post(
+            url,
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer $token",
+            },
+            body: jsonEncode(body),
+          )
+          .timeout(_timeoutDuration);
       return jsonDecode(response.body);
     } catch (e) {
       return {"success": false, "msg": e.toString()};
@@ -257,19 +390,27 @@ class ApiService {
   Future<Map<String, dynamic>> refreshToken(String refreshToken) async {
     final url = Uri.parse("$baseUrl/auth/refresh");
     try {
-      final response = await http.post(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"refresh_token": refreshToken}),
-      ).timeout(_timeoutDuration);
+      final response = await http
+          .post(
+            url,
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode({"refresh_token": refreshToken}),
+          )
+          .timeout(_timeoutDuration);
 
       if (response.statusCode == 200) {
         return {"success": true, "data": jsonDecode(response.body)};
       } else {
-        return {"success": false, "msg": jsonDecode(response.body)["detail"] ?? "Refresh failed"};
+        return {
+          "success": false,
+          "msg": jsonDecode(response.body)["detail"] ?? "Refresh failed",
+        };
       }
     } on TimeoutException {
-      return {"success": false, "msg": "Connection timed out. Please check your network."};
+      return {
+        "success": false,
+        "msg": "Connection timed out. Please check your network.",
+      };
     } catch (e) {
       return {"success": false, "msg": e.toString()};
     }
@@ -279,64 +420,194 @@ class ApiService {
   Future<Map<String, dynamic>> getRecentActivities(String token) async {
     try {
       final url = Uri.parse("$baseUrl/profile/recent-activities");
-      final response = await client.get(
-        url,
-        headers: {"Authorization": "Bearer $token"},
-      ).timeout(_timeoutDuration);
+      final response = await client
+          .get(url, headers: {"Authorization": "Bearer $token"})
+          .timeout(_timeoutDuration);
       return jsonDecode(response.body);
     } on TimeoutException {
-      return {"success": false, "msg": "Connection timed out. Please check your network."};
+      return {
+        "success": false,
+        "msg": "Connection timed out. Please check your network.",
+      };
     } catch (e) {
-      return {"success": false, "msg": "Failed to fetch recent activities: ${e.toString()}"};
+      return {
+        "success": false,
+        "msg": "Failed to fetch recent activities: ${e.toString()}",
+      };
     }
   }
 
-  // Assistant Chat
-  Future<Map<String, dynamic>> assistantChat(String token, String message, String language) async {
+  // -----------------------------
+  // 🔥 LANGUAGE NORMALIZER
+  // Converts UI label -> API code
+  // -----------------------------
+  String _normalizeLang(String langUI) {
+    return LanguageHelper.toApiCode(langUI);
+  }
+
+  // -----------------------------
+  // TEXT ASSISTANT CHAT
+  // -----------------------------
+  Future<Map<String, dynamic>> assistantChat(
+    String token,
+    String message,
+    String uiLanguage,
+  ) async {
+    final apiLang = _normalizeLang(uiLanguage);
+
     try {
       final url = Uri.parse("$baseUrl/assistant/chat");
-      final response = await client.post(
-        url,
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $token",
-        },
-        body: jsonEncode({
-          "message": message,
-          "language": language,
-        }),
-      ).timeout(_timeoutDuration);
-      return jsonDecode(response.body);
+      final res = await client
+          .post(
+            url,
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer $token",
+            },
+            body: jsonEncode({
+              "message": message,
+              "language": apiLang, // ← CORRECT CODE
+            }),
+          )
+          .timeout(_timeoutDuration);
+
+      return jsonDecode(res.body);
     } on TimeoutException {
-      return {"success": false, "msg": "Connection timed out. Please check your network."};
+      return {"success": false, "msg": "Connection timed out."};
     } catch (e) {
-      return {"success": false, "msg": "Failed to send message: ${e.toString()}"};
+      return {"success": false, "msg": "Chat error: $e"};
     }
   }
 
-  // Assistant Voice
-  Future<Map<String, dynamic>> assistantVoice(String token, File audioFile, String language) async {
+  // -----------------------------
+  // VOICE ASSISTANT
+  // -----------------------------
+  Future<Map<String, dynamic>> assistantVoice(
+    String token,
+    File audioFile,
+    String uiLanguage,
+  ) async {
+    final apiLang = _normalizeLang(uiLanguage);
+
     try {
       final url = Uri.parse("$baseUrl/assistant/voice");
+
       final request = http.MultipartRequest("POST", url);
       request.headers["Authorization"] = "Bearer $token";
-      request.fields["language"] = language;
-      request.files.add(await http.MultipartFile.fromPath("file", audioFile.path));
+      request.fields["language"] = apiLang; // ← FIXED
+      request.files.add(
+        await http.MultipartFile.fromPath("file", audioFile.path),
+      );
 
       final streamed = await request.send();
       final response = await http.Response.fromStream(streamed);
       final data = jsonDecode(response.body);
 
-      // Convert relative audio_url to full URL
+      // Convert relative URL → absolute URL
       if (data["audio_url"] != null && data["audio_url"].startsWith("/")) {
         data["audio_url"] = "$baseUrl${data["audio_url"]}";
       }
 
       return data;
     } on TimeoutException {
-      return {"success": false, "msg": "Connection timed out. Please check your network."};
+      return {"success": false, "msg": "Voice request timed out."};
     } catch (e) {
-      return {"success": false, "msg": "Failed to send voice message: ${e.toString()}"};
+      return {"success": false, "msg": "Voice error: $e"};
+    }
+  }
+
+  // Change Password
+  Future<Map<String, dynamic>> changePassword({
+    required String token,
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    final url = Uri.parse("$baseUrl/auth/change-password");
+    try {
+      final response = await client
+          .post(
+            url,
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer $token",
+            },
+            body: jsonEncode({
+              "old_password": oldPassword,
+              "new_password": newPassword,
+            }),
+          )
+          .timeout(_timeoutDuration);
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {"success": true, "msg": "Password changed successfully"};
+      } else {
+        return {
+          "success": false,
+          "msg": data["detail"] ?? "Failed to change password",
+        };
+      }
+    } on TimeoutException {
+      return {
+        "success": false,
+        "msg": "Connection timed out. Please check your network.",
+      };
+    } catch (e) {
+      return {"success": false, "msg": "An error occurred: ${e.toString()}"};
+    }
+  }
+
+  // Update Profile
+  Future<Map<String, dynamic>> updateProfile({
+    required String token,
+    required String name,
+    required String email,
+    required String phone,
+    required String location,
+    required String district,
+    required String state,
+    File? profileImage,
+  }) async {
+    final url = Uri.parse("$baseUrl/auth/update-profile");
+    try {
+      final request = http.MultipartRequest('POST', url)
+        ..headers['Authorization'] = 'Bearer $token'
+        ..fields['name'] = name
+        ..fields['email'] = email
+        ..fields['phone'] = phone
+        ..fields['location'] = location
+        ..fields['district'] = district
+        ..fields['state'] = state;
+
+      // Add profile image if selected
+      if (profileImage != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath('profile_image', profileImage.path),
+        );
+      }
+
+      final streamedResponse = await request.send().timeout(_timeoutDuration);
+      final response = await http.Response.fromStream(streamedResponse);
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {
+          "success": true,
+          "msg": data["message"] ?? "Profile updated successfully",
+        };
+      } else {
+        return {
+          "success": false,
+          "msg": data["detail"] ?? "Failed to update profile",
+        };
+      }
+    } on TimeoutException {
+      return {
+        "success": false,
+        "msg": "Connection timed out. Please check your network.",
+      };
+    } catch (e) {
+      return {"success": false, "msg": "An error occurred: ${e.toString()}"};
     }
   }
 }

@@ -2,13 +2,17 @@ from PIL import Image
 import io
 import base64
 import os
+import csv
+import re
 from ultralytics import YOLO
 
 class CropDiseaseService:
     def __init__(self):
         self.models = {}
         self.class_names = {}
+        self.recommendations = {}
         self._load_models()
+        self._load_recommendations()
 
     def _load_models(self):
         # Base path for YOLO models
@@ -60,6 +64,50 @@ class CropDiseaseService:
         image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
         return image
 
+    def _load_recommendations(self):
+        # Load disease -> recommendation/prevention mappings from CSV
+        try:
+            csv_path = os.path.join(os.path.dirname(__file__), '..', '..', 'Crop_Disease_Recommendations_Preventions.csv')
+            csv_path = os.path.abspath(csv_path)
+            if not os.path.exists(csv_path):
+                print(f"Recommendations CSV not found at {csv_path}")
+                return
+
+            def normalize(s: str) -> str:
+                s = s or ''
+                s = s.strip().lower()
+                # replace non-alphanumeric with underscore
+                s = re.sub(r'[^a-z0-9]+', '_', s)
+                # collapse multiple underscores
+                s = re.sub(r'_+', '_', s).strip('_')
+                return s
+
+            with open(csv_path, newline='', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    disease = (row.get('Disease') or row.get('disease') or '').strip()
+                    recommendation = (row.get('Recommendation') or row.get('recommendation') or '').strip()
+                    prevention = (row.get('Prevention') or row.get('prevention') or '').strip()
+                    if not disease:
+                        continue
+
+                    # store several lookup keys including a normalized key
+                    keys = set([
+                        disease,
+                        disease.lower(),
+                        disease.replace(' ', '_'),
+                        disease.replace(' ', '_').lower(),
+                        normalize(disease),
+                    ])
+                    for k in keys:
+                        self.recommendations[k] = {
+                            'recommendation': recommendation,
+                            'prevention': prevention
+                        }
+            print(f"Loaded {len(self.recommendations)} recommendation entries from CSV")
+        except Exception as e:
+            print(f"Failed to load recommendations CSV: {e}")
+
     def predict(self, crop_type, image_data):
         if crop_type not in self.models:
             return {"error": f"YOLO model for crop '{crop_type}' not available"}
@@ -89,7 +137,18 @@ class CropDiseaseService:
 
                     print(f"Prediction debug for crop '{crop_type}': {prob_dict}")
 
-                    return {"prediction": predicted_class, "confidence": top_confidence, "probabilities": prob_dict}
+                    # Attach recommendation and prevention if available
+                    rec = self._get_recommendation_for(predicted_class, crop_type)
+
+                    response = {
+                        "predicted_class": predicted_class,
+                        "confidence": top_confidence,
+                        "probabilities": prob_dict,
+                    }
+                    if rec:
+                        response.update(rec)
+
+                    return response
                 else:
                     return {"error": "No probabilities found in prediction"}
             else:
@@ -97,6 +156,48 @@ class CropDiseaseService:
 
         except Exception as e:
             return {"error": f"Prediction failed: {str(e)}"}
+
+    def _get_recommendation_for(self, disease_name: str, crop_type: str):
+        if not disease_name:
+            return None
+        def normalize(s: str) -> str:
+            s = s or ''
+            s = s.strip().lower()
+            s = re.sub(r'[^a-z0-9]+', '_', s)
+            s = re.sub(r'_+', '_', s).strip('_')
+            return s
+
+        raw = disease_name
+        norm = normalize(raw)
+        crop_norm = normalize(crop_type)
+
+        # Include crop-prefixed keys
+        crop_prefixed_keys = [
+            crop_type + '_' + raw,
+            crop_type + '_' + raw.lower(),
+            crop_type + '_' + raw.replace(' ', '_'),
+            crop_type + '_' + raw.replace(' ', '_').lower(),
+            crop_norm + '_' + norm,
+        ]
+
+        # Exact matches first, including crop-prefixed
+        all_keys = list((raw, raw.lower(), raw.replace(' ', '_'), raw.replace(' ', '_').lower(), norm)) + crop_prefixed_keys
+        for key in all_keys:
+            if key in self.recommendations:
+                return self.recommendations[key]
+
+        # Fallback: substring or normalized substring match
+        for k, v in self.recommendations.items():
+            if not k:
+                continue
+            if norm and norm in normalize(k):
+                return v
+            if normalize(k) and normalize(k) in norm:
+                return v
+
+        # No recommendation found
+        print(f"No recommendation mapping found for disease '{disease_name}' (normalized '{norm}') with crop '{crop_type}'")
+        return None
 
 # Singleton instance
 crop_disease_service = CropDiseaseService()

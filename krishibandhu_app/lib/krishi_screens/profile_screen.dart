@@ -6,6 +6,9 @@ import '../widgets/profile_stat_card.dart';
 import '../widgets/settings_tile.dart';
 import '../services/api_service.dart';
 import '../screens/login_screen.dart';
+import 'edit_profile.dart';
+import 'view_profile.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String token;
@@ -19,11 +22,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final ApiService apiService = ApiService();
   Map<String, dynamic>? userProfile;
   bool _isLoading = true;
-
-  String _selectedTheme = 'System';
-  bool _notificationsEnabled = true;
-  bool _locationEnabled = true;
-  bool _dataSyncEnabled = true;
 
   @override
   void initState() {
@@ -42,9 +40,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         _isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load profile: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to load profile: $e')));
     }
   }
 
@@ -55,10 +53,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       appBar: AppBar(
         title: const Text('Profile'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: _editProfile,
-          ),
+          IconButton(icon: const Icon(Icons.edit), onPressed: _editProfile),
         ],
       ),
       body: SingleChildScrollView(
@@ -70,11 +65,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 24),
             _buildStatsSection(),
             const SizedBox(height: 24),
-            _buildSettingsSection(),
-            const SizedBox(height: 24),
             _buildAccountSection(),
             const SizedBox(height: 24),
-            _buildSupportSection(),
+            _buildApplicationSection(),
             const SizedBox(height: 24),
             _buildLogoutButton(),
           ],
@@ -83,13 +76,193 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget _buildAccountSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Account',
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey[800],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Card(
+          child: Column(
+            children: [
+              SettingsTile(
+                icon: Icons.person_outline,
+                title: 'Personal Information',
+                subtitle: 'View your personal details',
+                onTap: () {
+                  _viewPersonalInfo();
+                },
+              ),
+              const Divider(height: 1),
+              SettingsTile(
+                icon: Icons.lock,
+                title: 'Change Password',
+                subtitle: 'Update your password',
+                onTap: () {
+                  _showChangePasswordDialog(context);
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showChangePasswordDialog(BuildContext context) {
+    final oldPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Change Password'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: oldPasswordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(labelText: 'Old Password'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: newPasswordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(labelText: 'New Password'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: confirmPasswordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Confirm New Password',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                _validateAndChangePassword(
+                  context,
+                  oldPasswordController.text,
+                  newPasswordController.text,
+                  confirmPasswordController.text,
+                );
+              },
+              child: const Text('Change'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _validateAndChangePassword(
+    BuildContext context,
+    String oldPassword,
+    String newPassword,
+    String confirmPassword,
+  ) {
+    // Validation 1: Check if all fields are filled
+    if (oldPassword.isEmpty || newPassword.isEmpty || confirmPassword.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('All fields are required')));
+      return;
+    }
+
+    // Validation 2: Check if new password and confirm password match
+    if (newPassword != confirmPassword) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('New passwords do not match')),
+      );
+      return;
+    }
+
+    // Validation 3: Check if new password is at least 6 characters
+    if (newPassword.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('New password must be at least 6 characters'),
+        ),
+      );
+      return;
+    }
+
+    // Validation 4: Check if old password is different from new password
+    if (oldPassword == newPassword) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('New password must be different from old password'),
+        ),
+      );
+      return;
+    }
+
+    // All validations passed - proceed to call backend API
+    Navigator.of(context).pop();
+    _callChangePasswordAPI(context, oldPassword, newPassword);
+  }
+
+  void _callChangePasswordAPI(
+    BuildContext context,
+    String oldPassword,
+    String newPassword,
+  ) async {
+    try {
+      final result = await apiService.changePassword(
+        token: widget.token,
+        oldPassword: oldPassword,
+        newPassword: newPassword,
+      );
+
+      if (result['success']) {
+        // Password changed successfully
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['msg'] ?? 'Password changed successfully'),
+          ),
+        );
+      } else {
+        // Password change failed
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result['msg'] ?? 'Failed to change password')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+    }
+  }
+
   Widget _buildProfileHeader() {
     if (_isLoading) {
       return Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [AppTheme.primaryColor, AppTheme.secondaryColor],
+            colors: [
+              const Color.fromARGB(255, 248, 250, 248),
+              const Color.fromARGB(255, 221, 227, 222),
+            ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -124,11 +297,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 width: 2,
               ),
             ),
-            child: const Icon(
-              Icons.person,
-              size: 40,
-              color: Colors.white,
-            ),
+            child: userProfile?['profile_image'] != null
+                ? CachedNetworkImage(
+                    imageUrl: apiService.getFullImageUrl(userProfile?['profile_image']),
+                    imageBuilder: (context, imageProvider) => Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        image: DecorationImage(
+                          image: imageProvider,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                    placeholder: (context, url) => const CircularProgressIndicator(
+                      color: Colors.white,
+                    ),
+                    errorWidget: (context, url, error) => const Icon(
+                      Icons.person,
+                      size: 40,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.person, size: 40, color: Colors.white),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -169,13 +359,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    'Premium Member',
+                    'Member',
                     style: GoogleFonts.poppins(
                       fontSize: 12,
                       color: Colors.white,
@@ -209,7 +402,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Expanded(
               child: ProfileStatCard(
                 title: 'Total Fields',
-                value: '4',
+                value: '1',
                 icon: Icons.agriculture,
                 color: AppTheme.primaryColor,
               ),
@@ -218,7 +411,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Expanded(
               child: ProfileStatCard(
                 title: 'Crop Types',
-                value: '3',
+                value: '---',
                 icon: Icons.eco,
                 color: AppTheme.successColor,
               ),
@@ -230,8 +423,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             Expanded(
               child: ProfileStatCard(
-                title: 'Yield (This Year)',
-                value: '2.5T',
+                title: 'Yield',
+                value: '---',
                 icon: Icons.trending_up,
                 color: AppTheme.warningColor,
               ),
@@ -240,7 +433,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Expanded(
               child: ProfileStatCard(
                 title: 'Water Saved',
-                value: '15%',
+                value: '---',
                 icon: Icons.water_drop,
                 color: AppTheme.infoColor,
               ),
@@ -251,12 +444,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildSettingsSection() {
+  Widget _buildApplicationSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Settings',
+          'Application',
           style: GoogleFonts.poppins(
             fontSize: 18,
             fontWeight: FontWeight.w600,
@@ -267,168 +460,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Card(
           child: Column(
             children: [
-              SettingsTile(
-                icon: Icons.palette,
-                title: 'Theme',
-                subtitle: _selectedTheme,
-                onTap: _showThemeDialog,
-              ),
-              const Divider(height: 1),
-              SettingsTile(
-                icon: Icons.notifications,
-                title: 'Notifications',
-                subtitle: _notificationsEnabled ? 'Enabled' : 'Disabled',
-                trailing: Switch(
-                  value: _notificationsEnabled,
-                  onChanged: (value) {
-                    setState(() {
-                      _notificationsEnabled = value;
-                    });
-                  },
-                  activeColor: AppTheme.primaryColor,
-                ),
-                onTap: null,
-              ),
-              const Divider(height: 1),
-              SettingsTile(
-                icon: Icons.location_on,
-                title: 'Location Services',
-                subtitle: _locationEnabled ? 'Enabled' : 'Disabled',
-                trailing: Switch(
-                  value: _locationEnabled,
-                  onChanged: (value) {
-                    setState(() {
-                      _locationEnabled = value;
-                    });
-                  },
-                  activeColor: AppTheme.primaryColor,
-                ),
-                onTap: null,
-              ),
-              const Divider(height: 1),
-              SettingsTile(
-                icon: Icons.sync,
-                title: 'Data Sync',
-                subtitle: _dataSyncEnabled ? 'Enabled' : 'Disabled',
-                trailing: Switch(
-                  value: _dataSyncEnabled,
-                  onChanged: (value) {
-                    setState(() {
-                      _dataSyncEnabled = value;
-                    });
-                  },
-                  activeColor: AppTheme.primaryColor,
-                ),
-                onTap: null,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAccountSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Account',
-          style: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey[800],
-          ),
-        ),
-        const SizedBox(height: 12),
-        Card(
-          child: Column(
-            children: [
-              SettingsTile(
-                icon: Icons.person_outline,
-                title: 'Personal Information',
-                subtitle: 'Update your profile details',
-                onTap: () {
-                  // Navigate to personal info
-                },
-              ),
-              const Divider(height: 1),
-              SettingsTile(
-                icon: Icons.security,
-                title: 'Privacy & Security',
-                subtitle: 'Manage your privacy settings',
-                onTap: () {
-                  // Navigate to privacy settings
-                },
-              ),
-              const Divider(height: 1),
-              SettingsTile(
-                icon: Icons.lock,
-                title: 'Change Password',
-                subtitle: 'Update your password',
-                onTap: () {
-                  // Navigate to change password
-                },
-              ),
-              const Divider(height: 1),
-              SettingsTile(
-                icon: Icons.payment,
-                title: 'Billing & Subscription',
-                subtitle: 'Manage your subscription',
-                onTap: () {
-                  // Navigate to billing
-                },
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSupportSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Support',
-          style: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey[800],
-          ),
-        ),
-        const SizedBox(height: 12),
-        Card(
-          child: Column(
-            children: [
-              SettingsTile(
-                icon: Icons.help_outline,
-                title: 'Help Center',
-                subtitle: 'Get help and support',
-                onTap: () {
-                  // Navigate to help center
-                },
-              ),
-              const Divider(height: 1),
-              SettingsTile(
-                icon: Icons.chat,
-                title: 'Contact Support',
-                subtitle: 'Chat with our support team',
-                onTap: () {
-                  // Navigate to support chat
-                },
-              ),
-              const Divider(height: 1),
-              SettingsTile(
-                icon: Icons.feedback,
-                title: 'Send Feedback',
-                subtitle: 'Share your thoughts',
-                onTap: () {
-                  // Navigate to feedback
-                },
-              ),
-              const Divider(height: 1),
               SettingsTile(
                 icon: Icons.info_outline,
                 title: 'About KrishiBandhu',
@@ -455,73 +486,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
           backgroundColor: AppTheme.errorColor,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),
     );
   }
 
   void _editProfile() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Edit Profile', style: GoogleFonts.poppins()),
-        content: const Text('Profile editing feature coming soon!'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
+    if (userProfile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please wait while profile loads')),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            EditProfileScreen(token: widget.token, userProfile: userProfile!),
       ),
-    );
+    ).then((result) {
+      if (result == true) {
+        // Refresh profile data after returning from edit screen
+        _fetchProfile();
+      }
+    });
   }
 
-  void _showThemeDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Select Theme', style: GoogleFonts.poppins()),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            RadioListTile<String>(
-              title: const Text('Light'),
-              value: 'Light',
-              groupValue: _selectedTheme,
-              onChanged: (value) {
-                setState(() {
-                  _selectedTheme = value!;
-                });
-                Navigator.pop(context);
-              },
-            ),
-            RadioListTile<String>(
-              title: const Text('Dark'),
-              value: 'Dark',
-              groupValue: _selectedTheme,
-              onChanged: (value) {
-                setState(() {
-                  _selectedTheme = value!;
-                });
-                Navigator.pop(context);
-              },
-            ),
-            RadioListTile<String>(
-              title: const Text('System'),
-              value: 'System',
-              groupValue: _selectedTheme,
-              onChanged: (value) {
-                setState(() {
-                  _selectedTheme = value!;
-                });
-                Navigator.pop(context);
-              },
-            ),
-          ],
-        ),
+  void _viewPersonalInfo() {
+    if (userProfile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please wait while profile loads')),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            ViewProfileScreen(token: widget.token, userProfile: userProfile!),
       ),
     );
   }
@@ -530,7 +535,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     showAboutDialog(
       context: context,
       applicationName: 'KrishiBandhu',
-      applicationVersion: '1.0.0',
+      applicationVersion: '0.0.1',
       applicationIcon: const Icon(
         Icons.agriculture,
         size: 48,
@@ -539,7 +544,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       children: [
         const Text('Smart Agriculture Solutions'),
         const SizedBox(height: 16),
-        const Text('KrishiBandhu helps farmers optimize their crop production through AI-powered disease detection, smart irrigation, weather prediction, and virtual assistance.'),
+        const Text(
+          'KrishiBandhu helps farmers optimize their crop production through AI-powered disease detection, smart irrigation, weather prediction, and virtual assistance.',
+        ),
       ],
     );
   }

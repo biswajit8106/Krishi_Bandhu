@@ -49,6 +49,9 @@ dependencies:
   # Flutter Animate
   flutter_animate: ^4.5.0
 
+  # Cached Network Image for efficient image loading
+  cached_network_image: ^3.3.1
+
   # Shared Preferences for storing tokens
   shared_preferences: ^2.2.2
 
@@ -65,6 +68,8 @@ dependencies:
 
 #speech to text
   speech_to_text: ^7.3.0
+  # Text-to-speech for speaking assistant messages
+  flutter_tts: ^3.6.0
 
 
 dev_dependencies:

@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
+import '../helpers/language_helper.dart';
 import '../models/chat_models.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
@@ -30,9 +31,11 @@ class _AssistantScreenState extends State<AssistantScreen> {
   final ScrollController _scrollController = ScrollController();
   final List<ChatMessage> _messages = [];
 
-  String selectedLanguage = "en";
+  // DEFAULT UI language
+  String selectedLanguageUI = "English";
+
   bool isRecording = false;
-  bool isListening = false; // New state for continuous listening
+  bool isListening = false;
   String _lastWords = '';
 
   final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
@@ -51,10 +54,9 @@ class _AssistantScreenState extends State<AssistantScreen> {
   Future<void> _setupRecorder() async {
     try {
       await _recorder.openRecorder();
-      await _recorder.setSubscriptionDuration(const Duration(milliseconds: 200));
-      print("Recorder setup successful");
+      print("Recorder Ready");
     } catch (e) {
-      print("Error setting up recorder: $e");
+      print("Recorder Error: $e");
     }
   }
 
@@ -62,145 +64,77 @@ class _AssistantScreenState extends State<AssistantScreen> {
     _speech = stt.SpeechToText();
     bool available = await _speech.initialize(
       onStatus: (val) {
-        print('STT Status: $val');
-        if (val == 'listening') {
-          setState(() => isListening = true);
-        } else if (val == 'notListening') {
-          setState(() => isListening = false);
-        }
+        setState(() => isListening = val == "listening");
       },
       onError: (val) {
-        print('STT Error: $val');
         setState(() => isListening = false);
-        // Auto-retry after error
-        Future.delayed(const Duration(seconds: 1), () {
-          if (!isListening) {
-            _startContinuousListening();
-          }
-        });
+        Future.delayed(const Duration(seconds: 1), _startContinuousListening);
       },
     );
-    if (available) {
-      print("Speech to text initialized successfully");
-    } else {
-      print("Speech to text not available");
-    }
   }
 
   Future<void> _startContinuousListening() async {
     if (!_speech.isAvailable || isListening) return;
-
-    // Stop any existing listening session first
     await _stopContinuousListening();
 
-    // Request microphone permission
     var status = await Permission.microphone.request();
-    if (!status.isGranted) {
-      print("Microphone permission denied");
-      setState(() => isListening = false);
-      return;
-    }
+    if (!status.isGranted) return;
 
     setState(() => isListening = true);
 
-    try {
-      await _speech.listen(
-        onResult: (val) {
-          setState(() {
-            _lastWords = val.recognizedWords;
-          });
+    final apiLang = LanguageHelper.toApiCode(selectedLanguageUI);
+    final localeId = _getLocale(apiLang);
 
-          if (val.finalResult) {
-            // User finished speaking, process the message
-            _processVoiceInput(_lastWords);
-          }
-        },
-        listenFor: const Duration(seconds: 30),
-        pauseFor: const Duration(seconds: 3), // Reduced pause time for better responsiveness
-        partialResults: true,
-        localeId: _getLocaleId(),
-        onSoundLevelChange: (level) {
-          // Show listening indicator when sound is detected
-          if (level > 0.5 && !isListening) {
-            setState(() => isListening = true);
-          }
-        },
-        cancelOnError: true,
-        listenMode: stt.ListenMode.confirmation,
-      );
-    } catch (e) {
-      print("Error starting continuous listening: $e");
-      setState(() => isListening = false);
-      // Retry after a delay
-      await Future.delayed(const Duration(seconds: 2));
-      _startContinuousListening();
-    }
+    await _speech.listen(
+      onResult: (val) {
+        _lastWords = val.recognizedWords;
+        if (val.finalResult) _processVoiceInput(_lastWords);
+      },
+      localeId: localeId,
+      listenFor: const Duration(seconds: 30),
+      pauseFor: const Duration(seconds: 3),
+      partialResults: true,
+      listenMode: stt.ListenMode.confirmation,
+    );
   }
 
   Future<void> _stopContinuousListening() async {
-    if (_speech.isListening) {
-      await _speech.stop();
-    }
+    if (_speech.isListening) await _speech.stop();
     setState(() => isListening = false);
   }
 
-  String _getLocaleId() {
-    switch (selectedLanguage) {
-      case "en":
-        return "en_US";
-      case "hi":
-        return "hi_IN";
-      case "kn":
-        return "kn_IN";
-      case "te":
-        return "te_IN";
-      case "ta":
-        return "ta_IN";
-      case "mr":
-        return "mr_IN";
-      case "gu":
-        return "gu_IN";
-      case "bn":
-        return "bn_IN";
-      case "pa":
-        return "pa_IN";
-      case "ml":
-        return "ml_IN";
-      case "or":
-        return "or_IN";
-      case "ur":
-        return "ur_IN";
-      default:
-        return "en_US";
-    }
+  String _getLocale(String apiLang) {
+    return {
+      "en": "en_US",
+      "hi": "hi_IN",
+      "or": "or_IN",
+      "bn": "bn_IN",
+      "mr": "mr_IN",
+      "gu": "gu_IN",
+      "te": "te_IN",
+      "ta": "ta_IN",
+      "pa": "pa_IN",
+      "ml": "ml_IN",
+      "ur": "ur_IN",
+      "kn": "kn_IN",
+    }[apiLang] ??
+        "en_US";
   }
 
   Future<void> _processVoiceInput(String speechText) async {
     if (speechText.isEmpty) return;
 
-    // Show listening indicator
     setState(() {
       _messages.add(ChatMessage(
-          text: "🎤 Listening...",
-          isUser: false,
-          timestamp: DateTime.now()));
+          text: "🎤 Listening...", isUser: false, timestamp: DateTime.now()));
     });
-    _scrollToBottom();
 
-    // Send to backend for processing
     final reply = await _callBackendText(speechText);
 
-    // Remove listening message and add user message
     setState(() {
-      _messages.removeLast(); // Remove listening message
+      _messages.removeLast();
       _messages.add(ChatMessage(
-          text: speechText,
-          isUser: true,
-          timestamp: DateTime.now()));
-    });
-
-    // Add AI response
-    setState(() {
+          text: speechText, isUser: true, timestamp: DateTime.now()));
       _messages.add(ChatMessage(
           text: reply["response"],
           isUser: false,
@@ -208,29 +142,17 @@ class _AssistantScreenState extends State<AssistantScreen> {
           audioUrl: reply["audio_url"]));
     });
 
-    // Play assistant voice
     if (reply["audio_url"] != null) {
       _player.play(UrlSource(reply["audio_url"]));
     }
 
     _scrollToBottom();
 
-    // Restart listening after response
     await Future.delayed(const Duration(seconds: 2));
     _startContinuousListening();
   }
 
-  @override
-  void dispose() {
-    _messageController.dispose();
-    _scrollController.dispose();
-    _recorder.closeRecorder();
-    super.dispose();
-  }
-
-  // --------------------------------------------------------------------
-  // UI
-  // --------------------------------------------------------------------
+  // UI --------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -239,82 +161,60 @@ class _AssistantScreenState extends State<AssistantScreen> {
       appBar: AppBar(
         title: Row(
           children: [
-            const Text('Smart Assistant'),
-            if (isListening) ...[
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.red,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.mic, color: Colors.white, size: 16),
-                    SizedBox(width: 4),
-                    Text('Listening', style: TextStyle(color: Colors.white, fontSize: 12)),
-                  ],
-                ),
-              ),
-            ],
+            const Text("Smart Assistant"),
+            if (isListening)
+              Padding(
+                padding: const EdgeInsets.only(left: 10),
+                child: _buildListeningIndicator(),
+              )
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.language),
-            onPressed: _showLanguageSelector,
-          ),
-          IconButton(
-            icon: Icon(isRecording ? Icons.mic : Icons.mic_none),
-            onPressed: _toggleRecording,
-          ),
+          IconButton(icon: const Icon(Icons.language), onPressed: _showLanguageSelector),
+          IconButton(icon: Icon(isRecording ? Icons.mic : Icons.mic_none), onPressed: _toggleRecording)
         ],
       ),
-      body: Column(
-        children: [
-          _buildQuickActions(),
-          Expanded(child: _buildChatList()),
-          _buildMessageInput(),
-        ],
-      ),
+      body: Column(children: [
+        _buildQuickActions(),
+        Expanded(child: _buildChatList()),
+        _buildMessageInput(),
+      ]),
       bottomNavigationBar: BottomNavBar(currentIndex: 4, token: widget.token),
+    );
+  }
+
+  Widget _buildListeningIndicator() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration:
+          BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(12)),
+      child: const Row(children: [
+        Icon(Icons.mic, color: Colors.white, size: 16),
+        SizedBox(width: 4),
+        Text("Listening", style: TextStyle(color: Colors.white, fontSize: 12))
+      ]),
     );
   }
 
   Widget _buildQuickActions() {
     return Container(
       padding: const EdgeInsets.all(16),
-      color: Colors.white,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text("Quick Actions",
-              style: GoogleFonts.poppins(
-                  fontSize: 16, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 10),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(children: [
-              QuickActionButton(
-                  icon: Icons.eco,
-                  label: "Crop Advice",
-                  onTap: () => _sendMessage("Give me advice about my rice crop")),
-              const SizedBox(width: 8),
-              QuickActionButton(
-                  icon: Icons.water_drop,
-                  label: "Irrigation",
-                  onTap: () =>
-                      _sendMessage("Help me with irrigation scheduling")),
-              const SizedBox(width: 8),
-              QuickActionButton(
-                  icon: Icons.wb_sunny,
-                  label: "Weather",
-                  onTap: () =>
-                      _sendMessage("What is the farming weather today?")),
-            ]),
-          ),
-        ],
-      ),
+      child: Row(children: [
+        QuickActionButton(
+            icon: Icons.eco,
+            label: "Crop Advice",
+            onTap: () => _sendMessage("Give me advice about my rice crop")),
+        const SizedBox(width: 8),
+        QuickActionButton(
+            icon: Icons.water_drop,
+            label: "Irrigation",
+            onTap: () => _sendMessage("Help me with irrigation scheduling")),
+        const SizedBox(width: 8),
+        QuickActionButton(
+            icon: Icons.wb_sunny,
+            label: "Weather",
+            onTap: () => _sendMessage("What is the farming weather today?")),
+      ]),
     );
   }
 
@@ -323,9 +223,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
       controller: _scrollController,
       padding: const EdgeInsets.all(16),
       itemCount: _messages.length,
-      itemBuilder: (context, index) {
-        return ChatMessageWidget(message: _messages[index]);
-      },
+      itemBuilder: (context, index) => ChatMessageWidget(message: _messages[index]),
     );
   }
 
@@ -333,54 +231,40 @@ class _AssistantScreenState extends State<AssistantScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       color: Colors.white,
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _messageController,
-              decoration:
-                  const InputDecoration(hintText: "Ask me anything..."),
-              onSubmitted: (value) => _sendMessage(value.trim()),
-            ),
+      child: Row(children: [
+        Expanded(
+          child: TextField(
+            controller: _messageController,
+            decoration: const InputDecoration(hintText: "Ask me anything..."),
+            onSubmitted: (value) => _sendMessage(value.trim()),
           ),
-          IconButton(
+        ),
+        IconButton(
             icon: const Icon(Icons.send, color: Colors.green),
-            onPressed: () {
-              _sendMessage(_messageController.text.trim());
-            },
-          )
-        ],
-      ),
+            onPressed: () => _sendMessage(_messageController.text.trim()))
+      ]),
     );
   }
 
-  // --------------------------------------------------------------------
-  // CHAT FUNCTIONALITY
-  // --------------------------------------------------------------------
+  // CORE CHAT FLOW -----------------------------------------------------------------
 
   void _addWelcomeMessage() {
-    setState(() {
-      _messages.add(ChatMessage(
-          text:
-              "Hello! I am your KrishiBandhu Smart Assistant. How can I help you?",
-          isUser: false,
-          timestamp: DateTime.now()));
-    });
-    print("Welcome message added");
+    _messages.add(ChatMessage(
+        text: "Hello! I am your KrishiBandhu Smart Assistant. How can I help you?",
+        isUser: false,
+        timestamp: DateTime.now()));
   }
 
   Future<void> _sendMessage(String text) async {
     if (text.isEmpty) return;
 
     setState(() {
-      _messages.add(ChatMessage(
-          text: text, isUser: true, timestamp: DateTime.now()));
+      _messages.add(ChatMessage(text: text, isUser: true, timestamp: DateTime.now()));
     });
 
     _messageController.clear();
     _scrollToBottom();
 
-    // Send text to backend
     final reply = await _callBackendText(text);
 
     setState(() {
@@ -391,35 +275,24 @@ class _AssistantScreenState extends State<AssistantScreen> {
           audioUrl: reply["audio_url"]));
     });
 
-    // Play assistant voice
-    if (reply["audio_url"] != null) {
-      _player.play(UrlSource(reply["audio_url"]));
-    }
+    if (reply["audio_url"] != null) _player.play(UrlSource(reply["audio_url"]));
 
     _scrollToBottom();
   }
 
   Future<Map<String, dynamic>> _callBackendText(String prompt) async {
-    final apiService = ApiService();
-    return await apiService.assistantChat(widget.token, prompt, selectedLanguage);
+    final apiLang = LanguageHelper.toApiCode(selectedLanguageUI);
+    final api = ApiService();
+    return await api.assistantChat(widget.token, prompt, apiLang);
   }
 
-  // --------------------------------------------------------------------
-  // VOICE RECORDING + BACKEND SEND
-  // --------------------------------------------------------------------
+  // VOICE RECORDING ----------------------------------------------------------------
 
   Future<void> _toggleRecording() async {
     if (!isRecording) {
-      // Request microphone permission
       var status = await Permission.microphone.request();
-      if (status.isGranted) {
-        await _startRecording();
-      } else {
-        // Show a snackbar or dialog to inform user
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Microphone permission is required for voice input')),
-        );
-      }
+      if (!status.isGranted) return;
+      await _startRecording();
     } else {
       await _stopRecording();
     }
@@ -428,47 +301,31 @@ class _AssistantScreenState extends State<AssistantScreen> {
   Future<void> _startRecording() async {
     setState(() => isRecording = true);
 
-    // Add welcome message when starting recording
-    setState(() {
-      _messages.add(ChatMessage(
-          text: "Welcome to KrishiBandhu Assistant! How can I help you today?",
-          isUser: false,
-          timestamp: DateTime.now()));
-    });
-    _scrollToBottom();
+    final dir = await getApplicationDocumentsDirectory();
+    final filePath = "${dir.path}/voice_input.wav";
 
-    final directory = await getApplicationDocumentsDirectory();
-    final filePath = '${directory.path}/voice_input.wav';
-
-    await _recorder.startRecorder(
-      toFile: filePath,
-      codec: Codec.pcm16WAV,
-    );
+    await _recorder.startRecorder(toFile: filePath, codec: Codec.pcm16WAV);
   }
 
   Future<void> _stopRecording() async {
     setState(() => isRecording = false);
-
     final path = await _recorder.stopRecorder();
-    final audioFile = File(path!);
-
-    await _sendVoiceToBackend(audioFile);
+    if (path == null) return;
+    await _sendVoiceToBackend(File(path));
   }
 
   Future<void> _sendVoiceToBackend(File audio) async {
-    final apiService = ApiService();
-    final data = await apiService.assistantVoice(widget.token, audio, selectedLanguage);
+    final api = ApiService();
+    final apiLang = LanguageHelper.toApiCode(selectedLanguageUI);
 
-    // Show user speech text
+    final data =
+        await api.assistantVoice(widget.token, audio, apiLang);
+
     setState(() {
       _messages.add(ChatMessage(
           text: data["user_voice_text"],
           isUser: true,
           timestamp: DateTime.now()));
-    });
-
-    // Show AI response
-    setState(() {
       _messages.add(ChatMessage(
           text: data["response"],
           isUser: false,
@@ -476,30 +333,21 @@ class _AssistantScreenState extends State<AssistantScreen> {
           audioUrl: data["audio_url"]));
     });
 
-    // Play voice response
     if (data["audio_url"] != null) {
       try {
         await _player.play(UrlSource(data["audio_url"]));
-        print("Playing audio from: ${data["audio_url"]}");
       } catch (e) {
-        print("Error playing audio: $e");
-        // Show error message to user
-        setState(() {
-          _messages.add(ChatMessage(
-              text: "Audio playback failed. Please check your connection.",
-              isUser: false,
-              timestamp: DateTime.now()));
-        });
-        _scrollToBottom();
+        _messages.add(ChatMessage(
+            text: "Audio playback failed. Please check your connection.",
+            isUser: false,
+            timestamp: DateTime.now()));
       }
     }
 
     _scrollToBottom();
   }
 
-  // --------------------------------------------------------------------
-  // LANGUAGE SELECTOR
-  // --------------------------------------------------------------------
+  // LANGUAGE SELECTOR --------------------------------------------------------------
 
   void _showLanguageSelector() {
     showDialog(
@@ -507,27 +355,28 @@ class _AssistantScreenState extends State<AssistantScreen> {
         builder: (ctx) => AlertDialog(
               title: const Text("Choose Language"),
               content: Column(mainAxisSize: MainAxisSize.min, children: [
-                _langTile("English", "en"),
-                _langTile("Hindi (हिंदी)", "hi"),
-                _langTile("Odia (ଓଡ଼ିଆ)", "or"),
-                _langTile("Bengali (বাংলা)", "bn"),
+                _langTile("English", "English"),
+                _langTile("Hindi (हिंदी)", "हिन्दी"),
+                _langTile("Odia (ଓଡିଆ)", "ଓଡ଼ିଆ"),
+                _langTile("Bengali (বাংলা)", "বাংলা"),
               ]),
             ));
   }
 
-  Widget _langTile(String title, String code) {
+  Widget _langTile(String title, String uiLang) {
     return ListTile(
       title: Text(title),
-      trailing:
-          selectedLanguage == code ? const Icon(Icons.check_circle) : null,
+      trailing: selectedLanguageUI == uiLang
+          ? const Icon(Icons.check_circle)
+          : null,
       onTap: () {
-        setState(() => selectedLanguage = code);
+        setState(() => selectedLanguageUI = uiLang);
         Navigator.pop(context);
       },
     );
   }
 
-  // --------------------------------------------------------------------
+  // SCROLL BOTTOM ------------------------------------------------------------------
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {

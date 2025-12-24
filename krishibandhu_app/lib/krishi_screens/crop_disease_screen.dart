@@ -28,14 +28,24 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
 
   final List<Map<String, String>> crops = [
     {
-      "name": "Apple",
-      "asset": "lib/krishi_screens/assets/apple.png",
-      "backend": "apple",
+      "name": "Wheat",
+      "asset": "lib/krishi_screens/assets/Wheat.png",
+      "backend": "wheat",
     },
     {
-      "name": "Banana",
-      "asset": "lib/krishi_screens/assets/Banana.png",
-      "backend": "banana",
+      "name": "Rice",
+      "asset": "lib/krishi_screens/assets/Rice.png",
+      "backend": "rice",
+    },
+    {
+      "name": "Maize",
+      "asset": "lib/krishi_screens/assets/Maize.png",
+      "backend": "corn",
+    },
+    {
+      "name": "Sugarcane",
+      "asset": "lib/krishi_screens/assets/Sugarcan.png",
+      "backend": "sugarcane",
     },
     {
       "name": "Black Gram",
@@ -43,8 +53,23 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
       "backend": "black_gram",
     },
     {
+      "name": "Soybean",
+      "asset": "lib/krishi_screens/assets/Soybean.png",
+      "backend": "soybean",
+    },
+    {
+      "name": "Potato",
+      "asset": "lib/krishi_screens/assets/Potato.png",
+      "backend": "potato",
+    },
+    {
+      "name": "Tomato",
+      "asset": "lib/krishi_screens/assets/Tamato.png",
+      "backend": "tomato",
+    },
+    {
       "name": "Brinjal",
-      "asset": "lib/krishi_screens/assets/brinjal.png",
+      "asset": "lib/krishi_screens/assets/Brinjal.png",
       "backend": "brinjal",
     },
     {
@@ -53,44 +78,29 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
       "backend": "chilli",
     },
     {
+      "name": "Apple",
+      "asset": "lib/krishi_screens/assets/Apple.png",
+      "backend": "apple",
+    },
+    {
+      "name": "Banana",
+      "asset": "lib/krishi_screens/assets/Banana.png",
+      "backend": "banana",
+    },
+    {
       "name": "Grape",
       "asset": "lib/krishi_screens/assets/Grape.png",
       "backend": "grape",
     },
     {
-      "name": "Maize",
-      "asset": "lib/krishi_screens/assets/Maize.png",
-      "backend": "corn",
+      "name": "Cherry",
+      "asset": "lib/krishi_screens/assets/Cherry.png",
+      "backend": "cherry",
     },
     {
-      "name": "Potato",
-      "asset": "lib/krishi_screens/assets/Potato.png",
-      "backend": "potato",
-    },
-    {
-      "name": "Rice",
-      "asset": "lib/krishi_screens/assets/Rice.png",
-      "backend": "rice",
-    },
-    {
-      "name": "Soybean",
-      "asset": "lib/krishi_screens/assets/Soybean.png",
-      "backend": "soybean",
-    },
-    {
-      "name": "Sugarcane",
-      "asset": "lib/krishi_screens/assets/Sugarcan.png",
-      "backend": "sugarcane",
-    },
-    {
-      "name": "Tomato",
-      "asset": "lib/krishi_screens/assets/Tamato.png",
-      "backend": "tomato",
-    },
-    {
-      "name": "Wheat",
-      "asset": "lib/krishi_screens/assets/Wheat.png",
-      "backend": "wheat",
+      "name": "Strawberry",
+      "asset": "lib/krishi_screens/assets/Strawberry.png",
+      "backend": "strawberry",
     },
   ];
 
@@ -432,32 +442,44 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                _buildDiseaseItem(
-                  'Rice Blast',
-                  'Fungal disease affecting rice leaves',
-                  Icons.warning,
-                  AppTheme.errorColor,
+                GestureDetector(
+                  onTap: () => _showRiceBlastDialog(),
+                  child: _buildDiseaseItem(
+                    'Rice Blast',
+                    'Fungal disease affecting rice leaves',
+                    Icons.warning,
+                    AppTheme.errorColor,
+                  ),
                 ),
                 const Divider(),
-                _buildDiseaseItem(
-                  'Powdery Mildew',
-                  'White powdery coating on leaves',
-                  Icons.cloud,
-                  AppTheme.warningColor,
+                GestureDetector(
+                  onTap: () => _showPowderyMildewDialog(),
+                  child: _buildDiseaseItem(
+                    'Powdery Mildew',
+                    'White powdery coating on leaves',
+                    Icons.cloud,
+                    AppTheme.warningColor,
+                  ),
                 ),
                 const Divider(),
-                _buildDiseaseItem(
-                  'Leaf Spot',
-                  'Dark spots on plant leaves',
-                  Icons.circle,
-                  AppTheme.infoColor,
+                GestureDetector(
+                  onTap: () => _showLeafSpotDialog(),
+                  child: _buildDiseaseItem(
+                    'Leaf Spot',
+                    'Dark spots on plant leaves',
+                    Icons.circle,
+                    AppTheme.infoColor,
+                  ),
                 ),
                 const Divider(),
-                _buildDiseaseItem(
-                  'Root Rot',
-                  'Decay of plant roots',
-                  Icons.water_drop,
-                  AppTheme.primaryColor,
+                GestureDetector(
+                  onTap: () => _showRootRotDialog(),
+                  child: _buildDiseaseItem(
+                    'Root Rot',
+                    'Decay of plant roots',
+                    Icons.water_drop,
+                    AppTheme.primaryColor,
+                  ),
                 ),
               ],
             ),
@@ -618,6 +640,12 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
 
       final data = result['data'];
 
+      // Debug: print full response data so we can inspect recommendation/prevention values
+      try {
+        // ignore: avoid_print
+        print('[CropDiseaseScreen] API response data: ' + data.toString());
+      } catch (_) {}
+
       // Parse confidence from backend and normalize to percentage (0-100).
       double parsedConfidence = 0.0;
       try {
@@ -645,12 +673,18 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
         _isAnalyzing = false;
         _diseaseResults = [
           DiseaseResult(
-            diseaseName: 'Predicted Class: ${data['prediction'] ?? 'Unknown'}',
+            diseaseName:
+                'Predicted Class: ${data['predicted_class'] ?? data['prediction'] ?? 'Unknown'}',
             confidence: parsedConfidence,
             description: 'Disease predicted by AI model for ${_selectedCrop}',
             symptoms: ['Symptoms not available from model'],
-            treatment: 'Consult local agricultural expert for treatment',
-            severity: 'Severity not determined',
+            treatment:
+                data['recommendation'] ??
+                data['treatment'] ??
+                'Consult local agricultural expert for treatment',
+            prevention: data['prevention'] ?? '',
+            recommendation: data['recommendation'] ?? '',
+            severity: data['severity'] ?? 'Severity not determined',
           ),
         ];
       });
@@ -679,6 +713,220 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
       ),
     );
   }
+
+  void _showRiceBlastDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          '🌾 Rice Blast Disease (Short Explanation)',
+          style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Rice Blast is a serious fungal disease caused by Magnaporthe oryzae. It affects rice leaves, stems, and panicles, creating grey, diamond-shaped spots. The disease weakens plants, reduces grain formation, and can cause major yield loss.',
+                style: GoogleFonts.poppins(fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'It spreads quickly in warm, humid weather, especially with too much nitrogen fertilizer and crowded planting.',
+                style: GoogleFonts.poppins(fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Control methods:',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _buildBulletPoint('Use resistant rice varieties'),
+              _buildBulletPoint('Maintain proper spacing'),
+              _buildBulletPoint('Apply balanced fertilizers'),
+              _buildBulletPoint('Remove infected debris'),
+              _buildBulletPoint('Use recommended fungicides if needed'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close', style: GoogleFonts.poppins()),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPowderyMildewDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          '🌱 Powdery Mildew Disease',
+          style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Powdery Mildew is a common fungal disease that affects many crops. It appears as white, powder-like spots on leaves, stems, and buds. As it spreads, the plant becomes weak, leaves turn yellow, and growth slows down.',
+                style: GoogleFonts.poppins(fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'The disease spreads quickly in warm, dry climates with high humidity and poor airflow.',
+                style: GoogleFonts.poppins(fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Control methods:',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _buildBulletPoint('Use resistant varieties'),
+              _buildBulletPoint('Improve air circulation by proper spacing'),
+              _buildBulletPoint('Remove infected leaves'),
+              _buildBulletPoint(
+                'Apply recommended fungicides or organic sprays like neem or baking soda solutions',
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close', style: GoogleFonts.poppins()),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLeafSpotDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          '🍃 Leaf Spot Disease',
+          style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Leaf Spot Disease is caused by fungi or bacteria and leads to small brown, black, or yellow spots on plant leaves. As the spots grow, they may join together, causing the leaf to dry, turn yellow, and fall off early. This reduces the plant\'s ability to make food and can lower crop yield.',
+                style: GoogleFonts.poppins(fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'The disease spreads easily in wet, humid conditions, especially when leaves stay moist for long periods.',
+                style: GoogleFonts.poppins(fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Control methods:',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _buildBulletPoint('Remove and destroy infected leaves'),
+              _buildBulletPoint('Avoid overhead watering'),
+              _buildBulletPoint('Ensure proper spacing for airflow'),
+              _buildBulletPoint(
+                'Use recommended fungicides or bactericides if needed',
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close', style: GoogleFonts.poppins()),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRootRotDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          '🌿 Root Rot Disease',
+          style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Root Rot is a fungal disease that causes plant roots to decay, soften, and turn brown or black. Diseased roots cannot absorb water or nutrients, leading to wilting, yellowing leaves, stunted growth, and eventually plant death.',
+                style: GoogleFonts.poppins(fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'It spreads easily in waterlogged, poorly drained soils or when plants are overwatered.',
+                style: GoogleFonts.poppins(fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Control methods:',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _buildBulletPoint('Improve soil drainage'),
+              _buildBulletPoint('Avoid overwatering'),
+              _buildBulletPoint('Use disease-free seeds or seedlings'),
+              _buildBulletPoint('Apply recommended soil fungicides'),
+              _buildBulletPoint('Practice crop rotation'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close', style: GoogleFonts.poppins()),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBulletPoint(String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8, top: 4),
+            child: Text('•', style: GoogleFonts.poppins(fontSize: 13)),
+          ),
+          Expanded(child: Text(text, style: GoogleFonts.poppins(fontSize: 13))),
+        ],
+      ),
+    );
+  }
 }
 
 class DiseaseResult {
@@ -688,6 +936,8 @@ class DiseaseResult {
   final List<String> symptoms;
   final String treatment;
   final String severity;
+  final String recommendation;
+  final String prevention;
 
   DiseaseResult({
     required this.diseaseName,
@@ -696,5 +946,7 @@ class DiseaseResult {
     required this.symptoms,
     required this.treatment,
     required this.severity,
+    required this.recommendation,
+    required this.prevention,
   });
 }

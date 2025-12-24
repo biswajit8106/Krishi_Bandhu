@@ -72,7 +72,7 @@ class _WeatherScreenState extends State<WeatherScreen>
           controller: _tabController,
           tabs: const [
             Tab(text: 'Current'),
-            Tab(text: '7-Day'),
+            Tab(text: 'Upcoming Days'),
             Tab(text: 'Charts'),
           ],
         ),
@@ -552,7 +552,7 @@ class _WeatherScreenState extends State<WeatherScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '7-Day Forecast',
+              'Upcoming-Days Forecast',
               style: GoogleFonts.poppins(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -648,17 +648,6 @@ class _WeatherScreenState extends State<WeatherScreen>
     return '${date.day}/${date.month}';
   }
 
-  String _getWeatherCondition(int index) {
-    final conditions = [
-      'Sunny',
-      'Partly Cloudy',
-      'Cloudy',
-      'Rainy',
-      'Thunderstorm',
-    ];
-    return conditions[index % conditions.length];
-  }
-
   void _showLocationDialog() {
     showDialog(
       context: context,
@@ -687,17 +676,7 @@ class _WeatherScreenState extends State<WeatherScreen>
                 Navigator.pop(context);
               },
             ),
-            ListTile(
-              title: const Text('Field B'),
-              leading: const Icon(Icons.agriculture),
-              onTap: () {
-                setState(() {
-                  _selectedLocation = 'Field B';
-                });
-                Navigator.pop(context);
-              },
-            ),
-          ],
+          ]
         ),
       ),
     );

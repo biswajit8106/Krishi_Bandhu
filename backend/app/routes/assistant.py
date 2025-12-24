@@ -1,58 +1,95 @@
+# assistant.py
+import os
+import io
+import uuid
+import sqlite3
+import asyncio
+import httpx
+from typing import Optional
 from fastapi import APIRouter, Depends, File, UploadFile, Form, HTTPException
 from pydantic import BaseModel
-import httpx, os, uuid, io
-from typing import Optional
+import speech_recognition as sr
+from pydub import AudioSegment
+from gtts import gTTS
+from groq import Groq
 from app import config, database
 from app.utils.auth_utils import get_current_user
 from app.models.user import User
 from app.models.assistant_query import AssistantQuery
-from app.services.weather_service import get_weather
-import speech_recognition as sr
-import wave
-import io
-from groq import Groq
-from gtts import gTTS
+from app.services.weather_service import get_weather, get_weather_by_coords
 from sqlalchemy.orm import Session
+from datetime import datetime
 
 router = APIRouter(prefix="/assistant", tags=["Assistant"])
 
 # -----------------------------
-# API KEYS
+# CONFIG / KEYS
 # -----------------------------
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", config.GROQ_API_KEY)
-
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", None)  # optional provider
 groq_client = Groq(api_key=GROQ_API_KEY)
 
+# -----------------------------
+# LANGUAGE MAP (backend validate)
+# -----------------------------
+LANGUAGE_MAP = {
+    'en': 'en', 'hi': 'hi', 'kn': 'kn', 'te': 'te', 'ta': 'ta', 'mr': 'mr',
+    'gu': 'gu', 'bn': 'bn', 'pa': 'pa', 'ml': 'ml', 'or': 'or', 'ur': 'ur'
+}
 
 # -----------------------------
-# FREE TRANSLATION
+# TRANSLATION CACHE (sqlite simple)
 # -----------------------------
+CACHE_DB = 'translation_cache.db'
+
+def init_cache():
+    conn = sqlite3.connect(CACHE_DB)
+    conn.execute('''CREATE TABLE IF NOT EXISTS translations (key TEXT PRIMARY KEY, result TEXT, created INTEGER)''')
+    conn.commit()
+    conn.close()
+
+def cache_get(key: str) -> Optional[str]:
+    conn = sqlite3.connect(CACHE_DB)
+    cur = conn.execute('SELECT result FROM translations WHERE key=?', (key,))
+    row = cur.fetchone()
+    conn.close()
+    return row[0] if row else None
+
+def cache_set(key: str, result: str):
+    conn = sqlite3.connect(CACHE_DB)
+    conn.execute('REPLACE INTO translations (key,result,created) VALUES (?,?,?)', (key, result, int(datetime.utcnow().timestamp())))
+    conn.commit()
+    conn.close()
+
 async def translate(text: str, source: str, target: str) -> str:
-    url = f"https://api.mymemory.translated.net/get?q={text}&langpair={source}|{target}"
+    """
+    Translate with cache -> external MyMemory fallback.
+    """
+    init_cache()
+    key = f"{source}:{target}:{text}"
+    cached = cache_get(key)
+    if cached:
+        return cached
+    # call MyMemory free API (note: escape)
     try:
-        async with httpx.AsyncClient() as client:
+        url = f"https://api.mymemory.translated.net/get?q={httpx.utils.quote(text)}&langpair={source}|{target}"
+        async with httpx.AsyncClient(timeout=10) as client:
             r = await client.get(url)
-            translated = r.json()["responseData"]["translatedText"]
-            return translated if translated else text
-    except:
+            translated = r.json().get("responseData", {}).get("translatedText")
+            translated = translated or text
+            cache_set(key, translated)
+            return translated
+    except Exception:
         return text
 
-
 # -----------------------------
-# GROQ RESPONSE
+# GROQ ASK (LLM)
 # -----------------------------
 async def ask_groq(msg: str) -> str:
     prompt = f"""
 You are KrishiBandhu Smart Assistant, an AI assistant specialized in agriculture and farming.
 You help farmers with crop management, irrigation scheduling, weather information, disease detection, and farming advice.
-
-IMPORTANT INSTRUCTIONS:
-- NEVER suggest language selections or translations
-- NEVER mention language options like Hindi, Kannada, etc.
-- NEVER ask about preferred languages
-- ALWAYS provide direct, practical farming advice
-- Focus ONLY on agriculture, crops, irrigation, weather, and farming practices
-- Give specific, actionable recommendations
+IMPORTANT: Provide direct, practical farming advice. Use numbers and short actionable steps where possible.
 
 User message:
 {msg}
@@ -66,190 +103,158 @@ Provide a direct response about farming and agriculture:
         )
         return response.choices[0].message.content
     except Exception as e:
-        print(f"Error in ask_groq: {e}")
+        print("ask_groq error:", e)
         return "Sorry, I couldn't process your request right now. Please try again later."
 
-
 # -----------------------------
-# AUDIO FORMAT CONVERSION
+# AUDIO CONVERSION FOR STT
 # -----------------------------
 def convert_audio_for_stt(audio_bytes: bytes) -> sr.AudioData:
-    """Convert audio bytes to proper format for speech recognition"""
+    """
+    Convert arbitrary audio bytes -> 16kHz mono WAV bytes and return sr.AudioData.
+    """
     try:
-        # Try to convert using pydub if available, otherwise assume it's already WAV
-        try:
-            from pydub import AudioSegment
-            # Convert to WAV format with proper parameters
-            audio_segment = AudioSegment.from_file(io.BytesIO(audio_bytes))
-            audio_segment = audio_segment.set_frame_rate(16000).set_channels(1)
-            wav_buffer = io.BytesIO()
-            audio_segment.export(wav_buffer, format="wav")
-            wav_buffer.seek(0)
-            wav_bytes = wav_buffer.read()
-
-            # Create AudioData object
-            return sr.AudioData(wav_bytes, 16000, 2)
-        except ImportError:
-            # Fallback: assume audio is already in correct format
-            print("Warning: pydub not available, assuming audio is already 16kHz WAV")
-            return sr.AudioData(audio_bytes, 16000, 2)
+        seg = AudioSegment.from_file(io.BytesIO(audio_bytes))
+        seg = seg.set_frame_rate(16000).set_channels(1).set_sample_width(2)
+        buf = io.BytesIO()
+        seg.export(buf, format="wav")
+        wav_bytes = buf.getvalue()
+        return sr.AudioData(wav_bytes, sample_rate=16000, sample_width=2)
     except Exception as e:
-        print(f"Error converting audio: {e}")
-        raise
-
+        print("convert_audio_for_stt fallback:", e)
+        # as last resort, pass bytes assuming WAV 16k
+        return sr.AudioData(audio_bytes, sample_rate=16000, sample_width=2)
 
 # -----------------------------
-# LANGUAGE MAPPING FOR TTS
+# TTS: provider layer (OpenAI optional) with gTTS fallback
 # -----------------------------
-LANGUAGE_MAP = {
-    'en': 'en',  # English
-    'hi': 'hi',  # Hindi
-    'kn': 'kn',  # Kannada
-    'te': 'te',  # Telugu
-    'ta': 'ta',  # Tamil
-    'mr': 'mr',  # Marathi
-    'gu': 'gu',  # Gujarati
-    'bn': 'bn',  # Bengali
-    'pa': 'pa',  # Punjabi
-    'ml': 'ml',  # Malayalam
-    'or': 'or',  # Odia
-    'ur': 'ur',  # Urdu
-    # Fallback to English for unsupported languages
-}
-
-
 def get_tts_language(lang: str) -> str:
-    """Get the appropriate TTS language code, with fallback to English"""
     return LANGUAGE_MAP.get(lang.lower(), 'en')
 
-
-# -----------------------------
-# TTS Generator (gTTS)
-# -----------------------------
 def generate_audio(text: str, lang: str) -> Optional[str]:
+    """
+    Primary fallback TTS: gTTS -> saves to static/audio and returns relative path like 'audio/<file>.mp3'
+    """
     try:
-        # Ensure the audio directory exists
         os.makedirs("static/audio", exist_ok=True)
-
-        filename = f"audio_{uuid.uuid4().hex}.mp3"
-        filepath = f"static/audio/{filename}"
-
-        # Get appropriate language for TTS
+        fname = f"audio_{uuid.uuid4().hex}.mp3"
+        path = os.path.join("static", "audio", fname)
         tts_lang = get_tts_language(lang)
-
-        print(f"DEBUG: Generating audio for text: '{text[:50]}...' in language: {tts_lang}")
-
         tts = gTTS(text=text, lang=tts_lang, slow=False)
-        tts.save(filepath)
-
-        # Verify file was created
-        if os.path.exists(filepath):
-            print(f"DEBUG: Audio file created successfully: {filepath}")
-            return f"audio/{filename}"  # Return relative path from static directory
-        else:
-            print(f"ERROR: Audio file was not created: {filepath}")
-            return None
-
+        tts.save(path)
+        if os.path.exists(path):
+            return f"audio/{fname}"
+        return None
     except Exception as e:
-        print(f"Error in generate_audio: {e}")
+        print("gTTS generate_audio error:", e)
         return None
 
+async def generate_audio_with_provider(text: str, lang: str) -> Optional[str]:
+    """
+    Try provider (OpenAI Realtime/other) if configured, otherwise fallback to gTTS.
+    (Pseudo-implementation — integrate actual provider SDK if available)
+    """
+    if OPENAI_API_KEY:
+        try:
+            # PSEUDO: call OpenAI TTS, save result to static/audio/... and return relative path
+            # Implementer: plug in your OpenAI TTS code here.
+            pass
+        except Exception as e:
+            print("OpenAI TTS failed:", e)
+    return generate_audio(text, lang)
 
 # -----------------------------
-# WEATHER DETECTION AND RESPONSE
+# Weather helpers
 # -----------------------------
 def is_weather_query(message: str) -> bool:
-    """Check if the message is asking about weather"""
     weather_keywords = [
         'weather', 'temperature', 'rain', 'forecast', 'climate',
         'sunny', 'cloudy', 'wind', 'humidity', 'precipitation',
         'मौसम', 'तापमान', 'बारिश', 'पूर्वानुमान', 'farming weather'
     ]
-    message_lower = message.lower()
-    return any(keyword in message_lower for keyword in weather_keywords)
-
+    ml = message.lower()
+    return any(k in ml for k in weather_keywords)
 
 def format_weather_response(weather_data: dict, user_location: str) -> str:
-    """Format weather data into a helpful farming-focused response"""
-    if "error" in weather_data:
-        return f"Sorry, I couldn't fetch weather data for {user_location}. {weather_data['error']}"
-
+    if not weather_data or "error" in weather_data:
+        err = weather_data.get('error') if isinstance(weather_data, dict) else None
+        return f"Sorry, I couldn't fetch weather data for {user_location}. {err or ''}"
     forecast = weather_data.get("forecast", [])
-
     response = f"Here's the current weather in {user_location}:\n\n"
     response += f"🌡️ Temperature: {weather_data.get('temperature', 'N/A')}°C\n"
     response += f"🌤️ Condition: {weather_data.get('condition', 'N/A')}\n"
     response += f"💨 Wind: {weather_data.get('wind_speed', 'N/A')} km/h\n"
     response += f"💧 Humidity: {weather_data.get('humidity', 'N/A')}%\n"
-    response += f"🌧️ Chance of Rain: {forecast[0].get('precipitation', 0) if forecast else 0}%\n\n"
-
-    if forecast and len(forecast) > 0:
+    if forecast:
+        response += f"🌧️ Chance of Rain: {forecast[0].get('precipitation', 0)}%\n\n"
+    if forecast:
         response += "📅 3-Day Forecast:\n"
         for i, day in enumerate(forecast[:3]):
             day_name = day.get('day', f'Day {i+1}')
-            high_temp = day.get('high_temp', 'N/A')
-            low_temp = day.get('low_temp', 'N/A')
-            condition = day.get('condition', 'N/A')
+            high = day.get('high_temp', 'N/A')
+            low = day.get('low_temp', 'N/A')
+            cond = day.get('condition', 'N/A')
             precip = day.get('precipitation', 'N/A')
-            response += f"{day_name}: {condition}, {high_temp}°C/{low_temp}°C, {precip}% rain chance\n"
-
-    response += "\n💡 Farming Tips: "
+            response += f"{day_name}: {cond}, {high}°C/{low}°C, {precip}% rain chance\n"
+    # simple tips
     temp = weather_data.get('temperature', 25)
-    precip_chance = forecast[0].get('precipitation', 0) if forecast else 0
-
+    precip = forecast[0].get('precipitation', 0) if forecast else 0
+    response += "\n💡 Farming Tips: "
+    try:
+        temp = float(temp)
+    except Exception:
+        temp = 25
     if temp < 15:
         response += "Cold weather - protect sensitive crops from frost."
     elif temp > 35:
         response += "Hot weather - ensure adequate irrigation and shade for crops."
-    elif precip_chance > 50:
+    elif precip > 50:
         response += "High chance of rain - prepare for waterlogging and fungal diseases."
     else:
         response += "Good weather conditions for most farming activities."
-
     return response
 
-
 # -----------------------------
-# TEXT CHAT ENDPOINT
+# Request models & endpoints
 # -----------------------------
 class ChatRequest(BaseModel):
     message: str
     language: str = "en"
 
-
 @router.post("/chat")
 async def assistant_chat(req: ChatRequest, user: User = Depends(get_current_user)):
-    lang = req.language
-    user_input = req.message
+    # normalize language
+    lang = (req.language or "en").lower()
+    if lang not in LANGUAGE_MAP:
+        lang = "en"
 
-    # Step 1: Check if this is a weather query (check both original and translated)
+    user_input = req.message or ""
     original_input = user_input.lower()
-    en_input = await translate(user_input, lang, "en")
 
-    # Check both original and translated input for weather keywords
+    # translate to English for LLM if needed
+    en_input = await translate(user_input, lang, "en") if lang != "en" else user_input
+
     is_weather = is_weather_query(original_input) or is_weather_query(en_input)
 
     if is_weather:
-        # Fetch real weather data using user's location
-        user_location_str = str(user.location) if user.location is not None else "Unknown"
-        print(f"DEBUG: Weather query detected. User location: {user_location_str}")
-        weather_data = get_weather(user_location_str)
-        print(f"DEBUG: Weather data received: {weather_data}")
-        groq_output = format_weather_response(weather_data, user_location_str)
-        print(f"DEBUG: Formatted weather response: {groq_output}")
+        # try coordinates if present in user model
+        user_location_str = str(getattr(user, "location", None) or "Unknown")
+        # If user has lat/lon fields, use them:
+        lat = getattr(user, "latitude", None)
+        lon = getattr(user, "longitude", None)
+        if lat and lon:
+            weather_data = get_weather_by_coords(lat, lon)
+            resolved_name = f"{lat},{lon}"
+        else:
+            weather_data = get_weather(user_location_str)
+            resolved_name = user_location_str
+        groq_output = format_weather_response(weather_data, resolved_name)
     else:
-        # Step 2: Ask Groq for non-weather queries
         groq_output = await ask_groq(en_input)
 
-    # Step 3: English → user language
-    final_output = await translate(groq_output, "en", lang)
+    final_output = await translate(groq_output, "en", lang) if lang != "en" else groq_output
 
-    response_data = {
-        "input": user_input,
-        "response": final_output
-    }
-
-    # Save query to database
+    # Save to database (safe)
     db = database.SessionLocal()
     try:
         assistant_query = AssistantQuery(
@@ -262,84 +267,64 @@ async def assistant_chat(req: ChatRequest, user: User = Depends(get_current_user
         )
         db.add(assistant_query)
         db.commit()
-        print(f"DEBUG: Saved text query to database for user {user.id}")
     except Exception as e:
-        print(f"Error saving text query to database: {e}")
+        print("DB save error:", e)
         db.rollback()
     finally:
         db.close()
 
-    print(f"Assistant chat response: {response_data}")
+    return {"input": user_input, "response": final_output}
 
-    return response_data
-
-
-# -----------------------------
-# VOICE ASSISTANT ENDPOINT
-# -----------------------------
 @router.post("/voice")
 async def assistant_voice(
     file: UploadFile = File(...),
     language: str = Form("en"),
     user: User = Depends(get_current_user)
 ):
-    # Step 1: Save uploaded audio file
+    language = (language or "en").lower()
+    if language not in LANGUAGE_MAP:
+        language = "en"
+
     audio_bytes = await file.read()
+    recognizer = sr.Recognizer()
+    user_text = "Sorry, I couldn't understand the audio."
 
-    # Step 2: Speech Recognition STT
-    user_text = "Sorry, I couldn't understand the audio."  # Default value
     try:
-        # Create a recognizer instance
-        recognizer = sr.Recognizer()
-
-        # Convert audio to proper format for speech recognition
         audio_data = convert_audio_for_stt(audio_bytes)
-
-        # Recognize speech using Google Speech Recognition
         user_text = recognizer.recognize_google(audio_data, language=language)
-        print(f"DEBUG: Speech recognized: {user_text}")
+        print("DEBUG: speech recognized:", user_text)
     except sr.UnknownValueError:
         user_text = "Sorry, I couldn't understand the audio."
-        print("DEBUG: Speech recognition - unknown value error")
     except sr.RequestError as e:
         user_text = f"Sorry, speech recognition service error: {e}"
-        print(f"DEBUG: Speech recognition request error: {e}")
     except Exception as e:
         user_text = f"Sorry, error processing audio: {e}"
-        print(f"DEBUG: Speech recognition general error: {e}")
 
-    # Step 3: Check if this is a weather query (check both original and translated)
-    original_text = user_text.lower()
-    en_text = await translate(user_text, language, "en")
+    original_text = (user_text or "").lower()
+    en_text = await translate(user_text, language, "en") if language != "en" else user_text
 
-    # Check both original and translated input for weather keywords
     is_weather = is_weather_query(original_text) or is_weather_query(en_text)
 
     if is_weather:
-        # Fetch real weather data using user's location
-        user_location_str = str(user.location) if user.location else "Unknown"
-        print(f"DEBUG: Voice weather query detected. User location: {user_location_str}")
-        weather_data = get_weather(user_location_str)
-        print(f"DEBUG: Voice weather data received: {weather_data}")
-        ai_en = format_weather_response(weather_data, user_location_str)
-        print(f"DEBUG: Voice formatted weather response: {ai_en}")
+        user_location_str = str(getattr(user, "location", None) or "Unknown")
+        lat = getattr(user, "latitude", None)
+        lon = getattr(user, "longitude", None)
+        if lat and lon:
+            weather_data = get_weather_by_coords(lat, lon)
+            ai_en = format_weather_response(weather_data, f"{lat},{lon}")
+        else:
+            weather_data = get_weather(user_location_str)
+            ai_en = format_weather_response(weather_data, user_location_str)
     else:
-        # Step 4: Groq answer for non-weather queries
         ai_en = await ask_groq(en_text)
 
-    # Step 5: Back to user language
-    final_response = await translate(ai_en, "en", language)
+    final_response = await translate(ai_en, "en", language) if language != "en" else ai_en
 
-    # Step 6: Generate assistant voice output
-    audio_path = generate_audio(final_response, language)
+    # Generate TTS (async provider layer)
+    audio_rel_path = await generate_audio_with_provider(final_response, language)
+    audio_url = f"/static/{audio_rel_path}" if audio_rel_path else None
 
-    response_data = {
-        "user_voice_text": user_text,
-        "response": final_response,
-        "audio_url": f"/static/{audio_path}" if audio_path else None
-    }
-
-    # Step 7: Save query to database
+    # Save to DB
     db = database.SessionLocal()
     try:
         assistant_query = AssistantQuery(
@@ -348,17 +333,18 @@ async def assistant_voice(
             user_input=user_text,
             assistant_response=final_response,
             language=language,
-            audio_url=f"/static/{audio_path}" if audio_path else None
+            audio_url=audio_url
         )
         db.add(assistant_query)
         db.commit()
-        print(f"DEBUG: Saved voice query to database for user {user.id}")
     except Exception as e:
-        print(f"Error saving voice query to database: {e}")
+        print("DB save error:", e)
         db.rollback()
     finally:
         db.close()
 
-    print(f"Assistant voice response: {response_data}")
-
-    return response_data
+    return {
+        "user_voice_text": user_text,
+        "response": final_response,
+        "audio_url": audio_url
+    }

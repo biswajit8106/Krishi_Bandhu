@@ -1,17 +1,14 @@
-# Voice Input/Output Fix Plan
+# Profile Image Display Implementation
 
-## Issues Identified
-- Speech recognition may fail due to audio format issues
-- Audio playback may not work due to incorrect URLs or missing files
-- Continuous listening may not restart properly after responses
-- Error handling is insufficient for voice operations
-- Language support for TTS may be limited
+## Backend Changes
+- [ ] Implement profile image upload in `backend/app/routes/auth.py`: Save images to `static/profile_images/` and store the path in the database
+- [ ] Update `backend/app/routes/profile.py`: Include `profile_image` in the `get_profile` response
 
-## Tasks
-- [x] Fix audio format conversion for speech recognition (16kHz WAV)
-- [x] Improve error handling in speech recognition
-- [x] Fix audio URL construction and static file serving
-- [x] Add better TTS language mapping
-- [x] Fix continuous listening restart logic
-- [x] Add comprehensive logging for debugging
-- [x] Test voice input and output functionality
+## Frontend Changes
+- [ ] Update `krishibandhu_app/lib/krishi_screens/profile_screen.dart`: Display the profile image if available, otherwise show the icon
+- [ ] Ensure the profile screen refreshes after editing to show updates immediately
+
+## Testing
+- [ ] Test image upload and display functionality
+- [ ] Verify proper error handling
+- [ ] Test password change functionality

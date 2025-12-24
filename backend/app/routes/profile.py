@@ -20,8 +20,10 @@ def get_profile(
         "phone": current_user.phone,
         "state": current_user.state,
         "district": current_user.district,
+        "location": current_user.location,
         "language": current_user.language,
-        "role": current_user.role
+        "role": current_user.role,
+        "profile_image": current_user.profile_image
     }
 
 @router.put("/update")

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../krishi_screens/home_screen.dart';
-import 'signup_screen.dart'; // ✅ Import signup screen
+import '../krishi_screens/signup_screen.dart'; // ✅ Import signup screen
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -152,35 +152,35 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 20),
 
-              // Divider + Social Login
-              Row(
-                children: const [
-                  Expanded(child: Divider(thickness: 1)),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8),
-                    child: Text("or continue with"),
-                  ),
-                  Expanded(child: Divider(thickness: 1)),
-                ],
-              ),
-              const SizedBox(height: 15),
+              // // Divider + Social Login
+              // Row(
+              //   children: const [
+              //     Expanded(child: Divider(thickness: 1)),
+              //     Padding(
+              //       padding: EdgeInsets.symmetric(horizontal: 8),
+              //       child: Text("or continue with"),
+              //     ),
+              //     Expanded(child: Divider(thickness: 1)),
+              //   ],
+              // ),
+              // const SizedBox(height: 15),
 
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                      onPressed: () {},
-                      icon: const Icon(Icons.account_circle,
-                          color: Colors.red, size: 40)),
-                  const SizedBox(width: 20),
-                  IconButton(
-                      onPressed: () {},
-                      icon: const Icon(Icons.fingerprint,
-                          color: Colors.blue, size: 40)),
-                ],
-              ),
+              // Row(
+              //   mainAxisAlignment: MainAxisAlignment.center,
+              //   children: [
+              //     IconButton(
+              //         onPressed: () {},
+              //         icon: const Icon(Icons.account_circle,
+              //             color: Colors.red, size: 40)),
+              //     const SizedBox(width: 20),
+              //     IconButton(
+              //         onPressed: () {},
+              //         icon: const Icon(Icons.fingerprint,
+              //             color: Colors.blue, size: 40)),
+              //   ],
+              // ),
 
-              const SizedBox(height: 30),
+              // const SizedBox(height: 30),
 
               // Signup Link
               Row(

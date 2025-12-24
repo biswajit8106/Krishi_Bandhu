@@ -4,7 +4,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../theme/app_theme.dart';
 import '../widgets/feature_card.dart';
 import '../widgets/weather_card.dart';
-// import '../widgets/quick_stats_card.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../services/api_service.dart';
 import 'crop_disease_screen.dart';
@@ -12,11 +11,11 @@ import 'weather_screen.dart';
 import 'irrigation_screen.dart';
 import 'assistant_screen.dart';
 import 'profile_screen.dart';
-import 'feedback_page.dart';
+import 'feedback.dart';
 import 'contact_support.dart';
 import 'terms_conditions.dart';
-import 'about_page.dart';
-import 'settings_page.dart';
+import 'about.dart';
+import 'settings.dart';
 
 class HomeScreen extends StatefulWidget {
   final String token;
@@ -147,13 +146,19 @@ class _HomeScreenState extends State<HomeScreen> {
           icon: const Icon(Icons.more_vert, color: Colors.grey),
           onSelected: (value) {
             switch (value) {
-              case 'feedback':
+              case 'about':
+                AboutPage.showAboutDialog(context);
+                break;
+              case 'settings':
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => FeedbackPage(token: widget.token),
+                    builder: (context) => SettingsPage(token: widget.token),
                   ),
                 );
+                break;
+              case 'feedback':
+                showFeedbackDialog(context, token: widget.token);
                 break;
               case 'contact':
                 Navigator.push(
@@ -173,28 +178,20 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 );
                 break;
-              case 'about':
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => AboutPage(token: widget.token),
-                  ),
-                );
-                break;
-              case 'settings':
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => SettingsPage(token: widget.token),
-                  ),
-                );
-                break;
             }
           },
           itemBuilder: (context) => [
             const PopupMenuItem(
+              value: 'about', 
+              child: Text('About')
+            ),
+            const PopupMenuItem(
+              value: 'settings', 
+              child: Text('Settings')
+            ),
+            const PopupMenuItem(
               value: 'feedback',
-              child: Text('Give Feedback'),
+              child: Text('Feedback'),
             ),
             const PopupMenuItem(
               value: 'contact',
@@ -204,8 +201,6 @@ class _HomeScreenState extends State<HomeScreen> {
               value: 'terms',
               child: Text('Terms & Conditions'),
             ),
-            const PopupMenuItem(value: 'about', child: Text('About')),
-            const PopupMenuItem(value: 'settings', child: Text('Settings')),
           ],
         ),
       ],

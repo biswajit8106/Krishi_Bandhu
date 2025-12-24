@@ -11,7 +11,7 @@ class DiseaseResultCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Color severityColor = _getSeverityColor(result.severity);
-    
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -32,7 +32,10 @@ class DiseaseResultCard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: severityColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
@@ -51,10 +54,7 @@ class DiseaseResultCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               result.description,
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                color: Colors.grey[600],
-              ),
+              style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[600]),
             ),
             const SizedBox(height: 12),
             Row(
@@ -81,24 +81,26 @@ class DiseaseResultCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 4),
-            ...result.symptoms.map((symptom) => Padding(
-              padding: const EdgeInsets.only(left: 8, top: 2),
-              child: Row(
-                children: [
-                  const Icon(Icons.circle, size: 6, color: Colors.grey),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      symptom,
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        color: Colors.grey[700],
+            ...result.symptoms.map(
+              (symptom) => Padding(
+                padding: const EdgeInsets.only(left: 8, top: 2),
+                child: Row(
+                  children: [
+                    const Icon(Icons.circle, size: 6, color: Colors.grey),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        symptom,
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: Colors.grey[700],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            )),
+            ),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
@@ -111,7 +113,11 @@ class DiseaseResultCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.medical_services, size: 16, color: AppTheme.infoColor),
+                      Icon(
+                        Icons.medical_services,
+                        size: 16,
+                        color: AppTheme.infoColor,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         'Treatment:',
@@ -126,6 +132,77 @@ class DiseaseResultCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     result.treatment,
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Recommendation & Prevention
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.secondaryColor.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.recommend,
+                        size: 16,
+                        color: AppTheme.secondaryColor,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Recommendation:',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.secondaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    result.recommendation.isNotEmpty
+                        ? result.recommendation
+                        : 'No recommendation available',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.shield,
+                        size: 16,
+                        color: AppTheme.secondaryColor,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Prevention:',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.secondaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    result.prevention.isNotEmpty
+                        ? result.prevention
+                        : 'No prevention tips available',
                     style: GoogleFonts.poppins(
                       fontSize: 12,
                       color: Colors.grey[700],

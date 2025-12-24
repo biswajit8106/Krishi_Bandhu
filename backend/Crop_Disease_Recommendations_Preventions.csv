@@ -1,0 +1,54 @@
+﻿Disease                             , Recommendation                                                , Prevention
+Apple_Apple_scab                    , Spray Mancozeb/Captan/Chlorothalonil; remove fallen leaves.   , Grow resistant varieties; prune for airflow.
+Apple_Black_rot                     , Apply Thiophanate-methyl or Copper fungicides; remove cankers., Avoid wounds; destroy infected fruits.
+Apple_Cedar_apple_rust              , Use Myclobutanil/Propiconazole; remove junipers.              , Plant rust?resistant varieties; orchard sanitation.
+Apple_healthy                       , No treatment required.                                        , Maintain routine care.
+Cordana Leaf Spot                   , Spray Chlorothalonil/Mancozeb.                                , Avoid waterlogging; remove infected leaves.
+Pestalotiopsis                      , Use Copper oxychloride/Carbendazim.                           , Sanitize tools; maintain spacing.
+Sigatoka                            , Apply Propiconazole/Mancozeb.                                 , Remove infected leaves; proper nutrition.
+Anthracnose                         , Use copper sprays; remove infected fruits.                    , Avoid overhead irrigation.
+Leaf Crinkle                        , Control aphids/whiteflies; remove infected plants.            , Use certified seeds.
+Powdery Mildew                      , Sulphur dust/Hexaconazole.                                    , Avoid excess nitrogen.
+Yellow Mosaic Virus                 , Control whiteflies; remove infected plants.                   , Resistant varieties; sticky traps.
+Leaf Spot                           , Use Mancozeb/Copper oxychloride.                              , Avoid overhead irrigation.
+Mosaic Virus                        , Control vectors; remove infected plants.                      , Use virus?free seedlings.
+Small Leaf Disease                  , Apply micronutrients; manage pests.                           , Maintain soil health.
+White Mold                          , Apply Carbendazim/Thiophanate-methyl.                         , Improve soil drainage.
+Wilt Disease                        , Drench with Copper oxychloride/Carbendazim.                   , Crop rotation.
+Cherry Including Sour Powdery Mildew, Use sulphur/Hexaconazole.                                     , Good airflow.
+Chili Leaf Curl                     , Control vectors; remove infected plants.                      , Sticky traps.
+Chili Leaf Spot                     , Spray Mancozeb/Copper.                                        , Proper spacing.
+Chili Whitefly                      , Use Neem oil/Imidacloprid.                                    , Remove weeds.
+Chili Yellowish                     , Apply NPK + micronutrients.                                   , Soil testing.
+Corn Cercospora                     , Use Strobilurin/Triazole fungicides.                          , Crop rotation.
+Corn Common Rust                    , Spray Mancozeb.                                               , Resistant hybrids.
+Corn Northen Leaf Blight            , Apply Carbendazim/Mancozeb.                                   , Avoid overhead irrigation.
+Grape Black Rot                     , Spray copper fungicides.                                      , Improve canopy drying.
+Grape Esca                          , Prune infected wood; Triazoles.                               , Avoid pruning in wet weather.
+Grape Leaf Blight                   , Use copper oxychloride.                                       , Maintain airflow.
+Pepper Bacterial Spot               , Use copper hydroxide.                                         , Disease?free seeds.
+Potato Early Blight                 , Spray Mancozeb/Chlorothalonil.                                , Adequate potassium.
+Potato Late Blight                  , Apply Metalaxyl/Dimethomorph.                                 , Avoid waterlogging.
+Rice Bacterial Blight               , Streptomycin + copper.                                        , Balanced nitrogen.
+Rice Blast                          , Apply Tricyclazole.                                           , Use resistant varieties.
+Rice Brown Spot                     , Mancozeb/Propiconazole.                                       , Improve soil fertility.
+Rice Tungro                         , Control leafhoppers; remove infected plants.                  , Use resistant seeds.
+Wheat Brown Rust                    , Apply Propiconazole.                                          , Avoid late sowing.
+Wheat Septoria                      , Use Strobilurins.                                             , Certified seeds.
+Wheat Yellow Rust                   , Apply Tebuconazole.                                           , Monitor cool humid fields.
+Soybean Bacterial Blight            , Copper fungicides.                                            , Certified seeds.
+Soybean Caterpillar                 , Use Emamectin/Lambda-cyhalothrin.                             , Clean field borders.
+Soybean Diabrotica                  , Chlorpyrifos soil treatment.                                  , Crop rotation.
+Sugarcane Mosaic                    , Remove diseased plants; control aphids.                       , Disease?free setts.
+Sugarcane Red Rot                   , Remove infected canes.                                        , Use resistant cultivars.
+Sugarcane Rust                      , Spray Propiconazole.                                          , Balanced nutrition.
+Sugarcane Yellow Leaf               , Control aphids; remove clumps.                                , Clean planting material.
+Tomato Bacterial Spot               , Copper sprays.                                                , Remove infected leaves.
+Tomato Early Blight                 , Mancozeb/Chlorothalonil.                                      , Field hygiene.
+Tomato Late Blight                  , Metalaxyl/Dimethomorph.                                       , Avoid humidity.
+Tomato Leaf Mold                    , Copper oxychloride.                                           , Ventilation.
+Tomato Septoria                     , Mancozeb/Copper.                                              , Avoid leaf wetness.
+Tomato Spider Mite                  , Abamectin/Neem oil.                                           , Dust-free field.
+Tomato Target Spot                  , Chlorothalonil/Copper.                                        , Good spacing.
+Tomato Yellow Leaf Curl Virus       , Control whiteflies.                                           , Remove infected plants.
+Tomato Mosaic Virus                 , Destroy plants; sanitize tools.                               , Virus-free seedlings.

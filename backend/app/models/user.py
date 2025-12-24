@@ -16,6 +16,7 @@ class User(Base):
     location = Column(String(100))  # City or village name
     language = Column(String(50))
     role = Column(String(50))  # e.g., 'farmer', 'expert', 'admin'
+    profile_image = Column(String(255), nullable=True)  # Path to profile image
 
     # Relationship with assistant queries
     assistant_queries = relationship("AssistantQuery", back_populates="user")

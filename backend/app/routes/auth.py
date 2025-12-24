@@ -1,14 +1,18 @@
 # backend/app/routes/auth.py
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Form
 from sqlalchemy.orm import Session
 import bcrypt
 import secrets
 from datetime import datetime, timedelta
 from pydantic import BaseModel
+import os
+import shutil
+from pathlib import Path
 
 from app import database, config
 from app.models.user import User
 from app.models.token import Token
+from app.utils.auth_utils import get_current_user
 
 class SignupRequest(BaseModel):
     name: str
@@ -115,3 +119,80 @@ def refresh_token_endpoint(request: RefreshRequest, db: Session = Depends(databa
     db.commit()
 
     return {"access_token": access_token_str, "refresh_token": refresh_token_str, "token_type": "bearer"}
+
+@router.post("/update-profile")
+def update_profile(
+    name: str = Form(...),
+    email: str = Form(...),
+    phone: str = Form(...),
+    location: str = Form(...),
+    district: str = Form(...),
+    state: str = Form(...),
+    profile_image: UploadFile = File(None),
+    db: Session = Depends(database.get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Check if phone or email is already taken by another user
+    if phone != current_user.phone and db.query(User).filter(User.phone == phone).first():
+        raise HTTPException(status_code=400, detail="Phone number already in use")
+    if email != current_user.email and db.query(User).filter(User.email == email).first():
+        raise HTTPException(status_code=400, detail="Email already in use")
+
+    # Update user fields
+    current_user.name = name
+    current_user.email = email
+    current_user.phone = phone
+    current_user.location = location
+    current_user.district = district
+    current_user.state = state
+
+    # Handle profile image upload
+    if profile_image:
+        # Create profile_images directory if it doesn't exist
+        profile_images_dir = Path("static/profile_images")
+        profile_images_dir.mkdir(exist_ok=True)
+
+        # Generate unique filename
+        file_extension = Path(profile_image.filename).suffix
+        unique_filename = f"{current_user.id}_{secrets.token_hex(8)}{file_extension}"
+        file_path = profile_images_dir / unique_filename
+
+        # Save the uploaded file
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(profile_image.file, buffer)
+
+        # Update user's profile_image path
+        current_user.profile_image = f"/static/profile_images/{unique_filename}"
+
+    db.commit()
+    db.refresh(current_user)
+    return {"message": "Profile updated successfully"}
+
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str
+
+@router.post("/change-password")
+def change_password(
+    request: ChangePasswordRequest,
+    db: Session = Depends(database.get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Verify old password
+    if not verify_password(request.old_password, current_user.password):
+        raise HTTPException(status_code=400, detail="Old password is incorrect")
+
+    # Check if new password is different from old
+    if request.old_password == request.new_password:
+        raise HTTPException(status_code=400, detail="New password must be different from old password")
+
+    # Validate new password length
+    if len(request.new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters long")
+
+    # Hash new password and update
+    hashed_new_password = get_password_hash(request.new_password)
+    current_user.password = hashed_new_password
+
+    db.commit()
+    return {"msg": "Password changed successfully"}
