@@ -12,6 +12,8 @@ class LanguageHelper {
     "ਪੰਜਾਬੀ": "pa",
     "മലയാളം": "ml",
     "ଓଡିଆ": "or",
+    // Some UIs use the alternate spelling with a nukta/dot: 'ଓଡ଼ିଆ'
+    "ଓଡ଼ିଆ": "or",
     "اردو": "ur",
     "Deutsch": "de",
   };

@@ -4,7 +4,6 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:flutter_tts/flutter_tts.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
@@ -14,6 +13,8 @@ import '../services/api_service.dart';
 import '../widgets/chat_message.dart';
 import '../widgets/quick_action_button.dart';
 import '../widgets/bottom_nav_bar.dart';
+
+enum EmotionType { happy, neutral, concern, urgent }
 
 class AssistantScreen extends StatefulWidget {
   final String token;
@@ -31,6 +32,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
   String selectedLanguageUI = "English";
 
   bool isListening = false;
+  bool isSpeaking = false;
   String _lastWords = "";
 
   final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
@@ -48,9 +50,13 @@ class _AssistantScreenState extends State<AssistantScreen> {
     _speech = stt.SpeechToText();
     await _speech.initialize(
       onStatus: (status) {
-        setState(() => isListening = status == "listening");
+        if (mounted) {
+          setState(() => isListening = status == "listening");
+        }
       },
-      onError: (_) => setState(() => isListening = false),
+      onError: (_) {
+        if (mounted) setState(() => isListening = false);
+      },
     );
 
     _flutterTts = FlutterTts();
@@ -65,21 +71,54 @@ class _AssistantScreenState extends State<AssistantScreen> {
     );
   }
 
-  // ================= SANITIZER =================
+  // ===================== UTILITIES =====================
 
   String _sanitizeResponse(String text) {
-    return text
-        .replaceAll('*', '')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
+  return text
+      .replaceAll('*', '')                // ✅ only asterisk removed
+      .replaceAll(RegExp(r'\s+'), ' ')    // spacing cleanup
+      .trim();
+}
+
+
+  Future<void> _stopSpeaking() async {
+    try {
+      await _flutterTts.stop();
+    } catch (_) {}
+    if (mounted) setState(() => isSpeaking = false);
   }
 
-  // ================= MESSAGE HELPERS =================
+  EmotionType _detectEmotion(String text) {
+    final t = text.toLowerCase();
+
+    if (t.contains("warning") ||
+        t.contains("alert") ||
+        t.contains("danger") ||
+        t.contains("immediately")) {
+      return EmotionType.urgent;
+    }
+
+    if (t.contains("risk") ||
+        t.contains("careful") ||
+        t.contains("disease") ||
+        t.contains("problem")) {
+      return EmotionType.concern;
+    }
+
+    if (t.contains("good") ||
+        t.contains("success") ||
+        t.contains("increase") ||
+        t.contains("profit")) {
+      return EmotionType.happy;
+    }
+
+    return EmotionType.neutral;
+  }
+
+  // ===================== MESSAGE HELPERS =====================
 
   void _addMessage(ChatMessage message) {
-    setState(() {
-      _messages.add(message);
-    });
+    setState(() => _messages.add(message));
     _scrollBottom();
   }
 
@@ -95,7 +134,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
     });
   }
 
-  // ================= UI =================
+  // ===================== UI =====================
 
   @override
   Widget build(BuildContext context) {
@@ -118,25 +157,42 @@ class _AssistantScreenState extends State<AssistantScreen> {
         ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: _buildMicFab(),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 70),
+        child: _buildMicFab(),
+      ),
       bottomNavigationBar:
           BottomNavBar(currentIndex: 4, token: widget.token),
     );
   }
 
   Widget _buildMicFab() {
-    return FloatingActionButton(
-      backgroundColor: isListening ? Colors.red : Colors.green,
-      onPressed: _onTapListen,
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 250),
-        child: Icon(
-          isListening ? Icons.graphic_eq : Icons.mic,
-          key: ValueKey(isListening),
-          size: 30,
-          color: Colors.white,
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        if (isListening)
+          const _PulseRing(color: Colors.red, size: 90),
+        if (isSpeaking)
+          const _PulseRing(color: Colors.green, size: 80),
+        FloatingActionButton(
+          backgroundColor:
+              isListening ? Colors.red : Colors.green,
+          onPressed: _onTapListen,
+          child: AnimatedScale(
+            scale: isSpeaking ? 1.15 : 1.0,
+            duration: const Duration(milliseconds: 300),
+            child: Icon(
+              isListening
+                  ? Icons.graphic_eq
+                  : isSpeaking
+                      ? Icons.volume_up
+                      : Icons.mic,
+              size: 30,
+              color: Colors.white,
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 
@@ -172,9 +228,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
       controller: _scrollController,
       padding: const EdgeInsets.all(16),
       itemCount: _messages.length,
-      itemBuilder: (_, i) {
-        return ChatMessageWidget(message: _messages[i]);
-      },
+      itemBuilder: (_, i) => ChatMessageWidget(message: _messages[i]),
     );
   }
 
@@ -187,6 +241,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
           Expanded(
             child: TextField(
               controller: _messageController,
+              onTap: _stopSpeaking,
               decoration:
                   const InputDecoration(hintText: "Ask something..."),
               onSubmitted: _sendMessage,
@@ -201,15 +256,15 @@ class _AssistantScreenState extends State<AssistantScreen> {
     );
   }
 
-  // ================= TEXT CHAT =================
+  // ===================== TEXT CHAT =====================
 
   Future<void> _sendMessage(String text) async {
     if (text.trim().isEmpty) return;
 
+    await _stopSpeaking();
     _messageController.clear();
 
     final cleanUserText = _sanitizeResponse(text);
-
     _addMessage(ChatMessage(
       text: cleanUserText,
       isUser: true,
@@ -228,9 +283,11 @@ class _AssistantScreenState extends State<AssistantScreen> {
     await _speak(cleanReply);
   }
 
-  // ================= VOICE =================
+  // ===================== VOICE =====================
 
   Future<void> _onTapListen() async {
+    await _stopSpeaking();
+
     var mic = await Permission.microphone.request();
     if (!mic.isGranted) return;
 
@@ -284,8 +341,9 @@ class _AssistantScreenState extends State<AssistantScreen> {
   Future<void> _processVoiceInput(String text) async {
     if (text.isEmpty) return;
 
-    final cleanUserText = _sanitizeResponse(text);
+    await _stopSpeaking();
 
+    final cleanUserText = _sanitizeResponse(text);
     _addMessage(ChatMessage(
       text: cleanUserText,
       isUser: true,
@@ -304,26 +362,57 @@ class _AssistantScreenState extends State<AssistantScreen> {
     await _speak(cleanReply);
   }
 
-  // ================= BACKEND =================
+  // ===================== BACKEND =====================
 
   Future<Map<String, dynamic>> _callBackend(String text) async {
     final api = ApiService();
-    final lang = LanguageHelper.toApiCode(selectedLanguageUI);
-    return api.assistantChat(widget.token, text, lang);
+    // Pass the UI language label — ApiService will normalize it.
+    return api.assistantChat(widget.token, text, selectedLanguageUI);
   }
 
-  // ================= TTS =================
+  // ===================== TTS (Emotion-based) =====================
 
   Future<void> _speak(String text) async {
     if (text.isEmpty) return;
+
+    final emotion = _detectEmotion(text);
     await _flutterTts.stop();
     await _flutterTts.setLanguage(
       _getTtsLocale(LanguageHelper.toApiCode(selectedLanguageUI)),
     );
+
+    switch (emotion) {
+      case EmotionType.happy:
+        await _flutterTts.setPitch(1.2);
+        await _flutterTts.setSpeechRate(0.55);
+        break;
+      case EmotionType.concern:
+        await _flutterTts.setPitch(0.9);
+        await _flutterTts.setSpeechRate(0.45);
+        break;
+      case EmotionType.urgent:
+        await _flutterTts.setPitch(1.3);
+        await _flutterTts.setSpeechRate(0.65);
+        break;
+      case EmotionType.neutral:
+      default:
+        await _flutterTts.setPitch(1.0);
+        await _flutterTts.setSpeechRate(0.5);
+    }
+
+    setState(() => isSpeaking = true);
+
+    _flutterTts.setCompletionHandler(() {
+      if (mounted) setState(() => isSpeaking = false);
+    });
+    _flutterTts.setErrorHandler((_) {
+      if (mounted) setState(() => isSpeaking = false);
+    });
+
     await _flutterTts.speak(text);
   }
 
-  // ================= LANGUAGE =================
+  // ===================== LANGUAGE =====================
 
   void _showLanguageSelector() {
     showDialog(
@@ -369,7 +458,56 @@ class _AssistantScreenState extends State<AssistantScreen> {
   }
 }
 
-// ================= WAVEFORM =================
+// ===================== ANIMATIONS =====================
+
+class _PulseRing extends StatefulWidget {
+  final Color color;
+  final double size;
+  const _PulseRing({required this.color, required this.size});
+
+  @override
+  State<_PulseRing> createState() => _PulseRingState();
+}
+
+class _PulseRingState extends State<_PulseRing>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    )..repeat();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (_, __) {
+        final scale = 1 + _controller.value;
+        final opacity = 1 - _controller.value;
+
+        return Container(
+          width: widget.size * scale,
+          height: widget.size * scale,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: widget.color.withOpacity(opacity * 0.3),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+}
 
 class WaveformAnimation extends StatefulWidget {
   const WaveformAnimation({super.key});
@@ -403,7 +541,8 @@ class _WaveformAnimationState extends State<WaveformAnimation>
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Container(
               width: 6,
-              height: 20 + (_controller.value * 25 * (i.isEven ? 1 : 0.6)),
+              height: 20 +
+                  (_controller.value * 25 * (i.isEven ? 1 : 0.6)),
               decoration: BoxDecoration(
                 color: Colors.green,
                 borderRadius: BorderRadius.circular(6),
