@@ -20,3 +20,5 @@ gtts
 python-dotenv
 groq
 speechrecognition
+langdetect
+pydub

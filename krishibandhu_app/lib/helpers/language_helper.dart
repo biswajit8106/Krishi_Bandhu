@@ -13,6 +13,7 @@ class LanguageHelper {
     "മലയാളം": "ml",
     "ଓଡିଆ": "or",
     "اردو": "ur",
+    "Deutsch": "de",
   };
 
   /// Convert UI selection → API code

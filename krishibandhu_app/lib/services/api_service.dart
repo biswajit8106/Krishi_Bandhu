@@ -7,7 +7,7 @@ import '../helpers/language_helper.dart';
 // Define the backend base URL
 // const String baseUrl = "http://10.0.2.2:8000"; // For Android emulator
 const String baseUrl =
-    "http://10.90.218.103:9999"; // For Web/PC and mobile devices on same network
+    "http://10.167.86.103:9999"; // For Web/PC and mobile devices on same network
 // const String localBaseUrl = "https://10.15.83.103:9999"; // For accessing local server over HTTPS
 // const String baseUrl = "http://10.164.152.146:9999"; // For local development
 
@@ -181,6 +181,27 @@ class ApiService {
       final url = Uri.parse("$baseUrl/disease/crops");
       final response = await client.get(url).timeout(_timeoutDuration);
       return jsonDecode(response.body);
+    } catch (e) {
+      return {"success": false, "msg": e.toString()};
+    }
+  }
+
+  // Get user's crop disease scan history
+  Future<Map<String, dynamic>> getDiseaseHistory(String token) async {
+    try {
+      final url = Uri.parse("$baseUrl/disease/history");
+      final response = await client
+          .get(url, headers: {"Authorization": "Bearer $token"})
+          .timeout(_timeoutDuration);
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        final decoded = jsonDecode(response.body);
+        return {"success": false, "msg": decoded["error"] ?? decoded["detail"] ?? "Failed to fetch history"};
+      }
+    } on TimeoutException {
+      return {"success": false, "msg": "Connection timed out. Please check your network."};
     } catch (e) {
       return {"success": false, "msg": e.toString()};
     }
@@ -471,11 +492,37 @@ class ApiService {
           )
           .timeout(_timeoutDuration);
 
-      return jsonDecode(res.body);
+      print("DEBUG: API chat response status: ${res.statusCode}");
+      print("DEBUG: API chat response body: ${res.body}");
+      
+      if (res.statusCode != 200) {
+        print("DEBUG: API error status code: ${res.statusCode}");
+        return {
+          "success": false,
+          "error": "API Error: Status ${res.statusCode}",
+          "response": null,
+          "audio_url": null,
+        };
+      }
+      
+      final response = jsonDecode(res.body);
+      print("DEBUG: Parsed response: $response");
+      return response;
     } on TimeoutException {
-      return {"success": false, "msg": "Connection timed out."};
+      return {
+        "success": false,
+        "error": "Connection timed out.",
+        "response": null,
+        "audio_url": null,
+      };
     } catch (e) {
-      return {"success": false, "msg": "Chat error: $e"};
+      print("DEBUG: Chat exception: $e");
+      return {
+        "success": false,
+        "error": "Chat error: $e",
+        "response": null,
+        "audio_url": null,
+      };
     }
   }
 

@@ -1,11 +1,9 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_sound/flutter_sound.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:http/http.dart' as http;
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -13,7 +11,6 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../helpers/language_helper.dart';
 import '../models/chat_models.dart';
 import '../services/api_service.dart';
-import '../theme/app_theme.dart';
 import '../widgets/chat_message.dart';
 import '../widgets/quick_action_button.dart';
 import '../widgets/bottom_nav_bar.dart';
@@ -31,190 +28,142 @@ class _AssistantScreenState extends State<AssistantScreen> {
   final ScrollController _scrollController = ScrollController();
   final List<ChatMessage> _messages = [];
 
-  // DEFAULT UI language
   String selectedLanguageUI = "English";
 
-  bool isRecording = false;
   bool isListening = false;
-  String _lastWords = '';
+  String _lastWords = "";
 
   final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
   final AudioPlayer _player = AudioPlayer();
+  late FlutterTts _flutterTts;
   late stt.SpeechToText _speech;
 
   @override
   void initState() {
     super.initState();
-    _setupRecorder();
-    _setupSpeechToText();
-    _addWelcomeMessage();
-    _startContinuousListening();
+    _initialize();
   }
 
-  Future<void> _setupRecorder() async {
-    try {
-      await _recorder.openRecorder();
-      print("Recorder Ready");
-    } catch (e) {
-      print("Recorder Error: $e");
-    }
-  }
-
-  Future<void> _setupSpeechToText() async {
+  Future<void> _initialize() async {
     _speech = stt.SpeechToText();
-    bool available = await _speech.initialize(
-      onStatus: (val) {
-        setState(() => isListening = val == "listening");
+    await _speech.initialize(
+      onStatus: (status) {
+        setState(() => isListening = status == "listening");
       },
-      onError: (val) {
-        setState(() => isListening = false);
-        Future.delayed(const Duration(seconds: 1), _startContinuousListening);
-      },
+      onError: (_) => setState(() => isListening = false),
+    );
+
+    _flutterTts = FlutterTts();
+    await _recorder.openRecorder();
+
+    _addMessage(
+      ChatMessage(
+        text: "Hello! I am your KrishiBandhu Assistant 🌾",
+        isUser: false,
+        timestamp: DateTime.now(),
+      ),
     );
   }
 
-  Future<void> _startContinuousListening() async {
-    if (!_speech.isAvailable || isListening) return;
-    await _stopContinuousListening();
+  // ================= SANITIZER =================
 
-    var status = await Permission.microphone.request();
-    if (!status.isGranted) return;
-
-    setState(() => isListening = true);
-
-    final apiLang = LanguageHelper.toApiCode(selectedLanguageUI);
-    final localeId = _getLocale(apiLang);
-
-    await _speech.listen(
-      onResult: (val) {
-        _lastWords = val.recognizedWords;
-        if (val.finalResult) _processVoiceInput(_lastWords);
-      },
-      localeId: localeId,
-      listenFor: const Duration(seconds: 30),
-      pauseFor: const Duration(seconds: 3),
-      partialResults: true,
-      listenMode: stt.ListenMode.confirmation,
-    );
+  String _sanitizeResponse(String text) {
+    return text
+        .replaceAll('*', '')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
   }
 
-  Future<void> _stopContinuousListening() async {
-    if (_speech.isListening) await _speech.stop();
-    setState(() => isListening = false);
-  }
+  // ================= MESSAGE HELPERS =================
 
-  String _getLocale(String apiLang) {
-    return {
-      "en": "en_US",
-      "hi": "hi_IN",
-      "or": "or_IN",
-      "bn": "bn_IN",
-      "mr": "mr_IN",
-      "gu": "gu_IN",
-      "te": "te_IN",
-      "ta": "ta_IN",
-      "pa": "pa_IN",
-      "ml": "ml_IN",
-      "ur": "ur_IN",
-      "kn": "kn_IN",
-    }[apiLang] ??
-        "en_US";
-  }
-
-  Future<void> _processVoiceInput(String speechText) async {
-    if (speechText.isEmpty) return;
-
+  void _addMessage(ChatMessage message) {
     setState(() {
-      _messages.add(ChatMessage(
-          text: "🎤 Listening...", isUser: false, timestamp: DateTime.now()));
+      _messages.add(message);
     });
-
-    final reply = await _callBackendText(speechText);
-
-    setState(() {
-      _messages.removeLast();
-      _messages.add(ChatMessage(
-          text: speechText, isUser: true, timestamp: DateTime.now()));
-      _messages.add(ChatMessage(
-          text: reply["response"],
-          isUser: false,
-          timestamp: DateTime.now(),
-          audioUrl: reply["audio_url"]));
-    });
-
-    if (reply["audio_url"] != null) {
-      _player.play(UrlSource(reply["audio_url"]));
-    }
-
-    _scrollToBottom();
-
-    await Future.delayed(const Duration(seconds: 2));
-    _startContinuousListening();
+    _scrollBottom();
   }
 
-  // UI --------------------------------------------------------------------------
+  void _scrollBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  // ================= UI =================
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Row(
-          children: [
-            const Text("Smart Assistant"),
-            if (isListening)
-              Padding(
-                padding: const EdgeInsets.only(left: 10),
-                child: _buildListeningIndicator(),
-              )
-          ],
-        ),
+        title: const Text("KrishiBandhu Assistant"),
         actions: [
-          IconButton(icon: const Icon(Icons.language), onPressed: _showLanguageSelector),
-          IconButton(icon: Icon(isRecording ? Icons.mic : Icons.mic_none), onPressed: _toggleRecording)
+          IconButton(
+            icon: const Icon(Icons.language),
+            onPressed: _showLanguageSelector,
+          ),
         ],
       ),
-      body: Column(children: [
-        _buildQuickActions(),
-        Expanded(child: _buildChatList()),
-        _buildMessageInput(),
-      ]),
-      bottomNavigationBar: BottomNavBar(currentIndex: 4, token: widget.token),
+      body: Column(
+        children: [
+          _buildQuickActions(),
+          Expanded(child: _buildChatList()),
+          _buildMessageInput(),
+        ],
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: _buildMicFab(),
+      bottomNavigationBar:
+          BottomNavBar(currentIndex: 4, token: widget.token),
     );
   }
 
-  Widget _buildListeningIndicator() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration:
-          BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(12)),
-      child: const Row(children: [
-        Icon(Icons.mic, color: Colors.white, size: 16),
-        SizedBox(width: 4),
-        Text("Listening", style: TextStyle(color: Colors.white, fontSize: 12))
-      ]),
+  Widget _buildMicFab() {
+    return FloatingActionButton(
+      backgroundColor: isListening ? Colors.red : Colors.green,
+      onPressed: _onTapListen,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 250),
+        child: Icon(
+          isListening ? Icons.graphic_eq : Icons.mic,
+          key: ValueKey(isListening),
+          size: 30,
+          color: Colors.white,
+        ),
+      ),
     );
   }
 
   Widget _buildQuickActions() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Row(children: [
-        QuickActionButton(
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        children: [
+          QuickActionButton(
             icon: Icons.eco,
             label: "Crop Advice",
-            onTap: () => _sendMessage("Give me advice about my rice crop")),
-        const SizedBox(width: 8),
-        QuickActionButton(
+            onTap: () => _sendMessage("Give me crop advice"),
+          ),
+          const SizedBox(width: 8),
+          QuickActionButton(
             icon: Icons.water_drop,
             label: "Irrigation",
-            onTap: () => _sendMessage("Help me with irrigation scheduling")),
-        const SizedBox(width: 8),
-        QuickActionButton(
+            onTap: () => _sendMessage("Irrigation schedule"),
+          ),
+          const SizedBox(width: 8),
+          QuickActionButton(
             icon: Icons.wb_sunny,
             label: "Weather",
-            onTap: () => _sendMessage("What is the farming weather today?")),
-      ]),
+            onTap: () => _sendMessage("Today's weather"),
+          ),
+        ],
+      ),
     );
   }
 
@@ -223,7 +172,9 @@ class _AssistantScreenState extends State<AssistantScreen> {
       controller: _scrollController,
       padding: const EdgeInsets.all(16),
       itemCount: _messages.length,
-      itemBuilder: (context, index) => ChatMessageWidget(message: _messages[index]),
+      itemBuilder: (_, i) {
+        return ChatMessageWidget(message: _messages[i]);
+      },
     );
   }
 
@@ -231,161 +182,242 @@ class _AssistantScreenState extends State<AssistantScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       color: Colors.white,
-      child: Row(children: [
-        Expanded(
-          child: TextField(
-            controller: _messageController,
-            decoration: const InputDecoration(hintText: "Ask me anything..."),
-            onSubmitted: (value) => _sendMessage(value.trim()),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _messageController,
+              decoration:
+                  const InputDecoration(hintText: "Ask something..."),
+              onSubmitted: _sendMessage,
+            ),
           ),
-        ),
-        IconButton(
+          IconButton(
             icon: const Icon(Icons.send, color: Colors.green),
-            onPressed: () => _sendMessage(_messageController.text.trim()))
-      ]),
+            onPressed: () => _sendMessage(_messageController.text),
+          ),
+        ],
+      ),
     );
   }
 
-  // CORE CHAT FLOW -----------------------------------------------------------------
-
-  void _addWelcomeMessage() {
-    _messages.add(ChatMessage(
-        text: "Hello! I am your KrishiBandhu Smart Assistant. How can I help you?",
-        isUser: false,
-        timestamp: DateTime.now()));
-  }
+  // ================= TEXT CHAT =================
 
   Future<void> _sendMessage(String text) async {
-    if (text.isEmpty) return;
-
-    setState(() {
-      _messages.add(ChatMessage(text: text, isUser: true, timestamp: DateTime.now()));
-    });
+    if (text.trim().isEmpty) return;
 
     _messageController.clear();
-    _scrollToBottom();
 
-    final reply = await _callBackendText(text);
+    final cleanUserText = _sanitizeResponse(text);
 
-    setState(() {
-      _messages.add(ChatMessage(
-          text: reply["response"],
-          isUser: false,
-          timestamp: DateTime.now(),
-          audioUrl: reply["audio_url"]));
-    });
+    _addMessage(ChatMessage(
+      text: cleanUserText,
+      isUser: true,
+      timestamp: DateTime.now(),
+    ));
 
-    if (reply["audio_url"] != null) _player.play(UrlSource(reply["audio_url"]));
+    final reply = await _callBackend(cleanUserText);
+    final cleanReply = _sanitizeResponse(reply["response"]);
 
-    _scrollToBottom();
+    _addMessage(ChatMessage(
+      text: cleanReply,
+      isUser: false,
+      timestamp: DateTime.now(),
+    ));
+
+    await _speak(cleanReply);
   }
 
-  Future<Map<String, dynamic>> _callBackendText(String prompt) async {
-    final apiLang = LanguageHelper.toApiCode(selectedLanguageUI);
-    final api = ApiService();
-    return await api.assistantChat(widget.token, prompt, apiLang);
-  }
+  // ================= VOICE =================
 
-  // VOICE RECORDING ----------------------------------------------------------------
+  Future<void> _onTapListen() async {
+    var mic = await Permission.microphone.request();
+    if (!mic.isGranted) return;
 
-  Future<void> _toggleRecording() async {
-    if (!isRecording) {
-      var status = await Permission.microphone.request();
-      if (!status.isGranted) return;
-      await _startRecording();
-    } else {
-      await _stopRecording();
-    }
-  }
+    final locale =
+        _getLocale(LanguageHelper.toApiCode(selectedLanguageUI));
 
-  Future<void> _startRecording() async {
-    setState(() => isRecording = true);
+    _showListeningDialog();
 
-    final dir = await getApplicationDocumentsDirectory();
-    final filePath = "${dir.path}/voice_input.wav";
-
-    await _recorder.startRecorder(toFile: filePath, codec: Codec.pcm16WAV);
-  }
-
-  Future<void> _stopRecording() async {
-    setState(() => isRecording = false);
-    final path = await _recorder.stopRecorder();
-    if (path == null) return;
-    await _sendVoiceToBackend(File(path));
-  }
-
-  Future<void> _sendVoiceToBackend(File audio) async {
-    final api = ApiService();
-    final apiLang = LanguageHelper.toApiCode(selectedLanguageUI);
-
-    final data =
-        await api.assistantVoice(widget.token, audio, apiLang);
-
-    setState(() {
-      _messages.add(ChatMessage(
-          text: data["user_voice_text"],
-          isUser: true,
-          timestamp: DateTime.now()));
-      _messages.add(ChatMessage(
-          text: data["response"],
-          isUser: false,
-          timestamp: DateTime.now(),
-          audioUrl: data["audio_url"]));
-    });
-
-    if (data["audio_url"] != null) {
-      try {
-        await _player.play(UrlSource(data["audio_url"]));
-      } catch (e) {
-        _messages.add(ChatMessage(
-            text: "Audio playback failed. Please check your connection.",
-            isUser: false,
-            timestamp: DateTime.now()));
-      }
-    }
-
-    _scrollToBottom();
-  }
-
-  // LANGUAGE SELECTOR --------------------------------------------------------------
-
-  void _showLanguageSelector() {
-    showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-              title: const Text("Choose Language"),
-              content: Column(mainAxisSize: MainAxisSize.min, children: [
-                _langTile("English", "English"),
-                _langTile("Hindi (हिंदी)", "हिन्दी"),
-                _langTile("Odia (ଓଡିଆ)", "ଓଡ଼ିଆ"),
-                _langTile("Bengali (বাংলা)", "বাংলা"),
-              ]),
-            ));
-  }
-
-  Widget _langTile(String title, String uiLang) {
-    return ListTile(
-      title: Text(title),
-      trailing: selectedLanguageUI == uiLang
-          ? const Icon(Icons.check_circle)
-          : null,
-      onTap: () {
-        setState(() => selectedLanguageUI = uiLang);
-        Navigator.pop(context);
+    await _speech.listen(
+      localeId: locale,
+      listenFor: const Duration(seconds: 30),
+      onResult: (result) async {
+        _lastWords = result.recognizedWords;
+        if (result.finalResult) {
+          await _speech.stop();
+          Navigator.pop(context);
+          _processVoiceInput(_lastWords);
+        }
       },
     );
   }
 
-  // SCROLL BOTTOM ------------------------------------------------------------------
+  void _showListeningDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            WaveformAnimation(),
+            SizedBox(height: 12),
+            Text("Listening… Speak now"),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await _speech.stop();
+              Navigator.pop(context);
+            },
+            child: const Text("Cancel"),
+          ),
+        ],
+      ),
+    );
+  }
 
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-            _scrollController.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut);
-      }
-    });
+  Future<void> _processVoiceInput(String text) async {
+    if (text.isEmpty) return;
+
+    final cleanUserText = _sanitizeResponse(text);
+
+    _addMessage(ChatMessage(
+      text: cleanUserText,
+      isUser: true,
+      timestamp: DateTime.now(),
+    ));
+
+    final reply = await _callBackend(cleanUserText);
+    final cleanReply = _sanitizeResponse(reply["response"]);
+
+    _addMessage(ChatMessage(
+      text: cleanReply,
+      isUser: false,
+      timestamp: DateTime.now(),
+    ));
+
+    await _speak(cleanReply);
+  }
+
+  // ================= BACKEND =================
+
+  Future<Map<String, dynamic>> _callBackend(String text) async {
+    final api = ApiService();
+    final lang = LanguageHelper.toApiCode(selectedLanguageUI);
+    return api.assistantChat(widget.token, text, lang);
+  }
+
+  // ================= TTS =================
+
+  Future<void> _speak(String text) async {
+    if (text.isEmpty) return;
+    await _flutterTts.stop();
+    await _flutterTts.setLanguage(
+      _getTtsLocale(LanguageHelper.toApiCode(selectedLanguageUI)),
+    );
+    await _flutterTts.speak(text);
+  }
+
+  // ================= LANGUAGE =================
+
+  void _showLanguageSelector() {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Choose Language"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _lang("English"),
+            _lang("हिन्दी"),
+            _lang("বাংলা"),
+            _lang("ଓଡ଼ିଆ"),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _lang(String lang) => ListTile(
+        title: Text(lang),
+        trailing:
+            selectedLanguageUI == lang ? const Icon(Icons.check) : null,
+        onTap: () {
+          setState(() => selectedLanguageUI = lang);
+          Navigator.pop(context);
+        },
+      );
+
+  String _getLocale(String lang) =>
+      {"hi": "hi_IN", "bn": "bn_IN", "or": "or_IN"}[lang] ?? "en_US";
+
+  String _getTtsLocale(String lang) =>
+      {"hi": "hi-IN", "bn": "bn-IN", "or": "or-IN"}[lang] ?? "en-US";
+
+  @override
+  void dispose() {
+    _speech.stop();
+    _flutterTts.stop();
+    _recorder.closeRecorder();
+    _player.dispose();
+    super.dispose();
+  }
+}
+
+// ================= WAVEFORM =================
+
+class WaveformAnimation extends StatefulWidget {
+  const WaveformAnimation({super.key});
+
+  @override
+  State<WaveformAnimation> createState() => _WaveformAnimationState();
+}
+
+class _WaveformAnimationState extends State<WaveformAnimation>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (_, __) => Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(
+          5,
+          (i) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Container(
+              width: 6,
+              height: 20 + (_controller.value * 25 * (i.isEven ? 1 : 0.6)),
+              decoration: BoxDecoration(
+                color: Colors.green,
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 }

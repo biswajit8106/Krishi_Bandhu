@@ -1,0 +1,541 @@
+{
+  "apple_apple_scab": {
+    "disease": "Apple scab",
+    "severity": "Medium",
+    "symptoms": ["Olive-green to brown leaf spots with velvety texture", "Lesions on fruit causing scarring"],
+    "recommendation": "Remove and destroy infected leaves and fruit; apply fungicides at susceptible stages following label directions.",
+    "prevention": "Plant resistant cultivars, prune for air flow, and clean up fallen debris."
+  },
+  "apple_black_rot": {
+    "disease": "Black rot",
+    "severity": "High",
+    "symptoms": ["Circular dark lesions on leaves", "Rotting and mummified fruit"],
+    "recommendation": "Prune out infected wood, remove mummified fruit, and apply fungicide during wet periods.",
+    "prevention": "Sanitation and crop hygiene; avoid overhead irrigation."
+  },
+  "apple_cedar_apple_rust": {
+    "disease": "Cedar-apple rust",
+    "severity": "Medium",
+    "symptoms": ["Yellow/orange spots on leaves", "Raised pustules on underside of leaves"],
+    "recommendation": "Remove nearby junipers if practical, apply fungicide protectants during infection windows.",
+    "prevention": "Avoid planting near alternate hosts; choose resistant varieties."
+  },
+  "apple_healthy": {
+    "disease": "Healthy",
+    "severity": "Low",
+    "symptoms": ["No visible disease symptoms"],
+    "recommendation": "No treatment necessary; continue regular monitoring.",
+    "prevention": "Maintain good cultural practices and scouting."
+  },
+
+  "banana_cordana": {
+    "disease": "Cordana disease",
+    "severity": "Medium",
+    "symptoms": ["Necrotic leaf spots", "Lesion expansion and leaf blighting"],
+    "recommendation": "Remove severely affected leaves and consider fungicidal control where recommended locally.",
+    "prevention": "Good field sanitation and avoid prolonged leaf wetness."
+  },
+  "banana_healthy": {
+    "disease": "Healthy",
+    "severity": "Low",
+    "symptoms": ["No visible disease symptoms"],
+    "recommendation": "No action; maintain monitoring.",
+    "prevention": "Use clean planting material and good nutrition."
+  },
+  "banana_pestalotiopsis": {
+    "disease": "Pestalotiopsis",
+    "severity": "Medium",
+    "symptoms": ["Leaf spots with gray centers", "Fruit rot in humid conditions"],
+    "recommendation": "Remove infected tissue; apply fungicide when necessary following label guidance.",
+    "prevention": "Improve air circulation and avoid overhead irrigation."
+  },
+  "banana_sigatoka": {
+    "disease": "Sigatoka (Black leaf streak)",
+    "severity": "High",
+    "symptoms": ["Elongated streaks on leaves leading to necrosis", "Reduced yield and premature ripening"],
+    "recommendation": "Implement fungicide spray programs and remove infected leaves promptly.",
+    "prevention": "Use resistant cultivars and cultural controls to reduce inoculum."
+  },
+
+  "black_gram_anthracnose": {
+    "disease": "Anthracnose",
+    "severity": "Medium",
+    "symptoms": ["Dark sunken lesions on pods and leaves", "Seed discoloration"],
+    "recommendation": "Remove infected residues; treat seed and apply fungicide if recommended.",
+    "prevention": "Crop rotation and use disease-free seed."
+  },
+  "black_gram_healthy": {
+    "disease": "Healthy",
+    "severity": "Low",
+    "symptoms": ["No visible disease symptoms"],
+    "recommendation": "Monitor and maintain good practices.",
+    "prevention": "Use clean seed and rotate crops."
+  },
+  "black_gram_leaf_crinckle": {
+    "disease": "Leaf crinkle",
+    "severity": "Medium",
+    "symptoms": ["Distorted, crinkled leaves", "Stunting in severe cases"],
+    "recommendation": "Rogue out severely affected plants; manage vectors if viral.",
+    "prevention": "Use resistant varieties and control insect vectors."
+  },
+  "black_gram_powdery_mildew": {
+    "disease": "Powdery mildew",
+    "severity": "Medium",
+    "symptoms": ["White powdery fungal growth on leaf surfaces", "Premature leaf senescence"],
+    "recommendation": "Apply registered fungicides and remove heavily infected tissue.",
+    "prevention": "Ensure good ventilation and avoid excessive nitrogen."
+  },
+  "black_gram_yellow_mosaic": {
+    "disease": "Yellow mosaic virus",
+    "severity": "High",
+    "symptoms": ["Mosaic/yellow mottling on leaves", "Severe yield reduction"],
+    "recommendation": "Remove infected plants and control whitefly vectors.",
+    "prevention": "Use virus-free seed and resistant varieties where available."
+  },
+
+  "brinjal_healthy_leaf": {
+    "disease": "Healthy",
+    "severity": "Low",
+    "symptoms": ["No visible disease symptoms"],
+    "recommendation": "Monitor regularly.",
+    "prevention": "Maintain crop hygiene and balanced nutrition."
+  },
+  "brinjal_insect_pest_disease": {
+    "disease": "Insect pest damage",
+    "severity": "Medium",
+    "symptoms": ["Chewed leaves, holes, visible insects or frass"],
+    "recommendation": "Identify pest and apply IPM measures or targeted insecticide as needed.",
+    "prevention": "Use traps, biological controls, and cultural practices."
+  },
+  "brinjal_leaf_spot_disease": {
+    "disease": "Leaf spot",
+    "severity": "Medium",
+    "symptoms": ["Small to large spots on leaves leading to defoliation"],
+    "recommendation": "Remove affected leaves and apply fungicide if severe.",
+    "prevention": "Improve spacing and remove crop debris."
+  },
+  "brinjal_mosaic_virus_disease": {
+    "disease": "Mosaic virus",
+    "severity": "High",
+    "symptoms": ["Mottled, distorted leaves and stunted growth"],
+    "recommendation": "Remove infected plants and control vector insects.",
+    "prevention": "Use resistant varieties and virus-free transplants."
+  },
+  "brinjal_small_leaf_disease": {
+    "disease": "Small leaf symptom",
+    "severity": "Medium",
+    "symptoms": ["Reduced leaf size, chlorosis"],
+    "recommendation": "Check for nutrient deficiencies and pests; treat accordingly.",
+    "prevention": "Maintain balanced fertilization and monitor for pests."
+  },
+  "brinjal_white_mold_disease": {
+    "disease": "White mold",
+    "severity": "High",
+    "symptoms": ["White cottony fungal growth on stems and fruit"],
+    "recommendation": "Remove infected tissue and apply recommended fungicides.",
+    "prevention": "Avoid dense canopies and remove crop debris."
+  },
+  "brinjal_wilt_disease": {
+    "disease": "Wilt",
+    "severity": "High",
+    "symptoms": ["Wilting leaves, vascular browning"],
+    "recommendation": "Replace with resistant varieties and manage soil pathogens.",
+    "prevention": "Use clean soil, crop rotation, and resistant cultivars."
+  },
+
+  "cherry_powdery_mildew": {
+    "disease": "Powdery mildew",
+    "severity": "Medium",
+    "symptoms": ["White powdery growth on leaves and shoots"],
+    "recommendation": "Prune for air flow and apply fungicide if necessary.",
+    "prevention": "Avoid overcrowding and maintain good sanitation."
+  },
+  "cherry_healthy": {
+    "disease": "Healthy",
+    "severity": "Low",
+    "symptoms": ["No visible disease symptoms"],
+    "recommendation": "Monitor and maintain orchard health.",
+    "prevention": "Good pruning and sanitation."
+  },
+
+  "chilli_healthy": {
+    "disease": "Healthy",
+    "severity": "Low",
+    "symptoms": ["No visible disease symptoms"],
+    "recommendation": "No action needed.",
+    "prevention": "Regular scouting and proper nutrition."
+  },
+  "chilli_leaf_curl": {
+    "disease": "Leaf curl (likely viral)",
+    "severity": "High",
+    "symptoms": ["Severe leaf curling and distortion"],
+    "recommendation": "Remove infected plants and manage vectors like whiteflies.",
+    "prevention": "Use resistant varieties and control insect vectors."
+  },
+  "chilli_leaf_spot": {
+    "disease": "Leaf spot",
+    "severity": "Medium",
+    "symptoms": ["Dark spots on leaves that may coalesce"],
+    "recommendation": "Remove affected leaves and apply fungicide when warranted.",
+    "prevention": "Avoid overhead irrigation and improve drainage."
+  },
+  "chilli_whitefly": {
+    "disease": "Whitefly damage",
+    "severity": "Medium",
+    "symptoms": ["Sooty mold on leaves, yellowing, honeydew"],
+    "recommendation": "Use yellow sticky traps and targeted insecticides or biological controls.",
+    "prevention": "Promote natural enemies and avoid excessive nitrogen."
+  },
+  "chilli_yellowish": {
+    "disease": "Yellowing",
+    "severity": "Low",
+    "symptoms": ["Leaf yellowing which may indicate nutrient deficiency or stress"],
+    "recommendation": "Test soil and correct nutrient imbalances; check for pests.",
+    "prevention": "Balanced fertilization and proper irrigation."
+  },
+
+  "corn_cercospora_leaf_spot": {
+    "disease": "Cercospora / Gray leaf spot",
+    "severity": "Medium",
+    "symptoms": ["Rectangular brown lesions following veins"],
+    "recommendation": "Use resistant hybrids and apply fungicide when needed.",
+    "prevention": "Rotate crops and manage residue."
+  },
+  "corn_common_rust": {
+    "disease": "Common rust",
+    "severity": "Medium",
+    "symptoms": ["Reddish-brown pustules on leaves"],
+    "recommendation": "Use resistant varieties and fungicides for severe outbreaks.",
+    "prevention": "Crop rotation and resistant hybrids."
+  },
+  "corn_northern_leaf_blight": {
+    "disease": "Northern leaf blight",
+    "severity": "High",
+    "symptoms": ["Long gray-green lesions that can coalesce"],
+    "recommendation": "Plant resistant hybrids and manage residue; fungicides if needed.",
+    "prevention": "Rotate crops and reduce residue-borne inoculum."
+  },
+  "corn_healthy": {
+    "disease": "Healthy",
+    "severity": "Low",
+    "symptoms": ["No visible disease symptoms"],
+    "recommendation": "No treatment needed.",
+    "prevention": "Continue monitoring."
+  },
+
+  "grape_black_rot": {
+    "disease": "Black rot",
+    "severity": "High",
+    "symptoms": ["Small brown spots on leaves, black rotten fruit"],
+    "recommendation": "Sanitation and fungicide programs when conditions favor disease.",
+    "prevention": "Prune for air flow and remove mummies."
+  },
+  "grape_esca_black_measles": {
+    "disease": "Esca / Black measles",
+    "severity": "High",
+    "symptoms": ["Leaf tiger-striping and berry shriveling"],
+    "recommendation": "Remove affected wood and follow regional management guidelines.",
+    "prevention": "Replace dead vines and maintain vine health."
+  },
+  "grape_leaf_blight_isariopsis_leaf_spot": {
+    "disease": "Isariopsis leaf spot",
+    "severity": "Medium",
+    "symptoms": ["Brown spots on leaves that may coalesce"],
+    "recommendation": "Apply fungicide when necessary and improve canopy management.",
+    "prevention": "Good canopy management and sanitation."
+  },
+  "grape_healthy": {
+    "disease": "Healthy",
+    "severity": "Low",
+    "symptoms": ["No visible disease symptoms"],
+    "recommendation": "Monitor and maintain vine vigor.",
+    "prevention": "Balanced nutrition and pruning."
+  },
+
+  "pepper_bell_bacterial_spot": {
+    "disease": "Bacterial spot",
+    "severity": "Medium",
+    "symptoms": ["Water-soaked spots on leaves and fruit"],
+    "recommendation": "Remove infected tissue and use bactericides where appropriate.",
+    "prevention": "Use clean seed and avoid overhead irrigation."
+  },
+  "pepper_bell_healthy": {
+    "disease": "Healthy",
+    "severity": "Low",
+    "symptoms": ["No visible disease symptoms"],
+    "recommendation": "No action; monitor regularly.",
+    "prevention": "Good crop hygiene."
+  },
+
+  "potato_early_blight": {
+    "disease": "Early blight",
+    "severity": "Medium",
+    "symptoms": ["Dark concentric lesions on leaves and stems"],
+    "recommendation": "Remove affected foliage and apply fungicide if necessary.",
+    "prevention": "Rotate crops and manage irrigation."
+  },
+  "potato_late_blight": {
+    "disease": "Late blight",
+    "severity": "Critical",
+    "symptoms": ["Rapidly expanding water-soaked lesions and tuber rot"],
+    "recommendation": "Apply systemic fungicides immediately and remove infected plants.",
+    "prevention": "Use certified seed and avoid prolonged leaf wetness."
+  },
+  "potato_healthy": {
+    "disease": "Healthy",
+    "severity": "Low",
+    "symptoms": ["No visible disease symptoms"],
+    "recommendation": "No treatment needed.",
+    "prevention": "Monitor and use healthy seed."
+  },
+
+  "rice_bacterialblight": {
+    "disease": "Bacterial blight",
+    "severity": "High",
+    "symptoms": ["Water-soaked streaks on leaves and wilting"],
+    "recommendation": "Use resistant varieties and follow local management recommendations.",
+    "prevention": "Use clean seed and proper water management."
+  },
+  "rice_blast": {
+    "disease": "Rice blast",
+    "severity": "High",
+    "symptoms": ["Diamond-shaped lesions on leaves and panicle infection"],
+    "recommendation": "Use resistant varieties and apply fungicide where recommended.",
+    "prevention": "Avoid excessive nitrogen and maintain spacing."
+  },
+  "rice_brownspot": {
+    "disease": "Brown spot",
+    "severity": "Medium",
+    "symptoms": ["Brown circular spots on leaves"],
+    "recommendation": "Improve nutrition and apply fungicide if severe.",
+    "prevention": "Balanced fertilization and good field sanitation."
+  },
+  "rice_healthy": {
+    "disease": "Healthy",
+    "severity": "Low",
+    "symptoms": ["No visible disease symptoms"],
+    "recommendation": "Continue monitoring.",
+    "prevention": "Use recommended agronomic practices."
+  },
+  "rice_tungro": {
+    "disease": "Tungro virus",
+    "severity": "High",
+    "symptoms": ["Stunted plants, yellow-orange discoloration of leaves"],
+    "recommendation": "Remove infected plants and control vector leafhoppers.",
+    "prevention": "Use resistant varieties and virus-free seed."
+  },
+
+  "soybean_bacterial_blight": {
+    "disease": "Bacterial blight",
+    "severity": "Medium",
+    "symptoms": ["Water-soaked lesions on leaves"],
+    "recommendation": "Remove infected debris and follow local recommendations.",
+    "prevention": "Use clean seed and rotate crops."
+  },
+  "soybean_caterpillar": {
+    "disease": "Caterpillar/pest damage",
+    "severity": "Medium",
+    "symptoms": ["Defoliation, chewed leaves"],
+    "recommendation": "Implement IPM and targeted controls for caterpillars.",
+    "prevention": "Encourage natural enemies and monitor populations."
+  },
+  "soybean_diabrotica_speciosa": {
+    "disease": "Diabrotica (beetle) damage",
+    "severity": "Medium",
+    "symptoms": ["Feeding damage to foliage and pods"],
+    "recommendation": "Use traps or insecticides as recommended; follow IPM.",
+    "prevention": "Crop rotation and monitoring."
+  },
+  "soybean_downy_mildew": {
+    "disease": "Downy mildew",
+    "severity": "Medium",
+    "symptoms": ["Downy growth on leaf underside and yellowing"],
+    "recommendation": "Apply fungicides and improve drainage.",
+    "prevention": "Avoid dense stands and manage humidity."
+  },
+  "soybean_healthy": {
+    "disease": "Healthy",
+    "severity": "Low",
+    "symptoms": ["No visible disease symptoms"],
+    "recommendation": "No action required.",
+    "prevention": "Maintain good crop practices."
+  },
+  "soybean_mosaic_virus": {
+    "disease": "Mosaic virus",
+    "severity": "High",
+    "symptoms": ["Mottling and distortion of leaves"],
+    "recommendation": "Remove infected plants and use virus-free seed.",
+    "prevention": "Control vectors and plant resistant varieties."
+  },
+  "soybean_powdery_mildew": {
+    "disease": "Powdery mildew",
+    "severity": "Medium",
+    "symptoms": ["White powdery coating on leaves"],
+    "recommendation": "Apply fungicides and improve airflow.",
+    "prevention": "Avoid excess fertilizer and dense planting."
+  },
+  "soybean_rust": {
+    "disease": "Rust",
+    "severity": "High",
+    "symptoms": ["Reddish pustules on leaves leading to defoliation"],
+    "recommendation": "Apply fungicide programs and use resistant varieties.",
+    "prevention": "Monitor and use resistant cultivars."
+  },
+  "soybean_southern_blight": {
+    "disease": "Southern blight",
+    "severity": "High",
+    "symptoms": ["Wilting and collar rot with white fungal growth"],
+    "recommendation": "Remove infected plants and treat soil as recommended.",
+    "prevention": "Use crop rotation and avoid infected soils."
+  },
+  "strawberry_leaf_scorch": {
+    "disease": "Leaf scorch",
+    "severity": "Medium",
+    "symptoms": ["Brown marginal scorch on leaves"],
+    "recommendation": "Remove badly affected leaves and manage irrigation.",
+    "prevention": "Avoid water stress and maintain good sanitation."
+  },
+  "strawberry_healthy": {
+    "disease": "Healthy",
+    "severity": "Low",
+    "symptoms": ["No visible disease symptoms"],
+    "recommendation": "Monitor and maintain good practices.",
+    "prevention": "Use certified runners and good field hygiene."
+  },
+
+  "sugarcane_healthy": {
+    "disease": "Healthy",
+    "severity": "Low",
+    "symptoms": ["No visible disease symptoms"],
+    "recommendation": "No action needed.",
+    "prevention": "Standard crop management."
+  },
+  "sugarcane_mosaic": {
+    "disease": "Mosaic",
+    "severity": "Medium",
+    "symptoms": ["Mottled leaves and distorted growth"],
+    "recommendation": "Remove infected material and control vectors.",
+    "prevention": "Use virus-free planting material."
+  },
+  "sugarcane_redrot": {
+    "disease": "Red rot",
+    "severity": "High",
+    "symptoms": ["Rotted internal tissue in stalks and reddening"],
+    "recommendation": "Remove infected cane and follow resistant variety recommendations.",
+    "prevention": "Plant resistant varieties and avoid infected setts."
+  },
+  "sugarcane_rust": {
+    "disease": "Rust",
+    "severity": "Medium",
+    "symptoms": ["Orange-brown pustules on leaves"],
+    "recommendation": "Use resistant varieties and fungicide if necessary.",
+    "prevention": "Monitor and maintain plant vigor."
+  },
+  "sugarcane_yellow": {
+    "disease": "Yellowing",
+    "severity": "Medium",
+    "symptoms": ["Yellow leaves indicating nutrient deficiency or virus"],
+    "recommendation": "Test for nutrient deficiencies and treat accordingly.",
+    "prevention": "Balanced nutrition and use clean planting material."
+  },
+
+  "tomato_bacterial_spot": {
+    "disease": "Bacterial spot",
+    "severity": "Medium",
+    "symptoms": ["Water-soaked spots on leaves and fruit"],
+    "recommendation": "Remove infected material and use bactericides if advised.",
+    "prevention": "Use clean seed and avoid overhead watering."
+  },
+  "tomato_early_blight": {
+    "disease": "Early blight",
+    "severity": "High",
+    "symptoms": ["Brown concentric lesions on older leaves", "Yellowing and wilting"],
+    "recommendation": "Remove infected foliage and apply recommended fungicides.",
+    "prevention": "Rotate crops and remove debris."
+  },
+  "tomato_late_blight": {
+    "disease": "Late blight",
+    "severity": "Critical",
+    "symptoms": ["Water-soaked lesions and white sporulation"],
+    "recommendation": "Apply systemic fungicides immediately and follow local guidance.",
+    "prevention": "Use certified seed and manage moisture."
+  },
+  "tomato_leaf_mold": {
+    "disease": "Leaf mold",
+    "severity": "Medium",
+    "symptoms": ["Yellow spots and fuzzy growth on leaf undersides"],
+    "recommendation": "Improve ventilation and apply fungicides when warranted.",
+    "prevention": "Reduce humidity and space plants."
+  },
+  "tomato_septoria_leaf_spot": {
+    "disease": "Septoria leaf spot",
+    "severity": "Medium",
+    "symptoms": ["Small circular spots with dark borders"],
+    "recommendation": "Remove infected leaves and apply fungicides if needed.",
+    "prevention": "Sanitation and crop rotation."
+  },
+  "tomato_spider_mites_two_spotted_spider_mite": {
+    "disease": "Spider mites",
+    "severity": "Medium",
+    "symptoms": ["Fine webbing and stippling of leaves"],
+    "recommendation": "Use miticides or biological controls and reduce dust.",
+    "prevention": "Encourage predatory mites and maintain humidity."
+  },
+  "tomato_target_spot": {
+    "disease": "Target spot",
+    "severity": "Medium",
+    "symptoms": ["Target-like leaf lesions"],
+    "recommendation": "Remove affected foliage and apply fungicide as needed.",
+    "prevention": "Crop rotation and sanitation."
+  },
+  "tomato_tomato_yellow_leaf_curl_virus": {
+    "disease": "Tomato yellow leaf curl virus",
+    "severity": "High",
+    "symptoms": ["Leaf curling and yellowing, stunting"],
+    "recommendation": "Remove infected plants and control whitefly vectors.",
+    "prevention": "Use resistant varieties and control vectors."
+  },
+  "tomato_tomato_mosaic_virus": {
+    "disease": "Tomato mosaic virus",
+    "severity": "High",
+    "symptoms": ["Mosaic patterns, leaf distortion"],
+    "recommendation": "Rogue infected plants and use virus-free seed.",
+    "prevention": "Sanitation and resistant varieties."
+  },
+  "tomato_healthy": {
+    "disease": "Healthy",
+    "severity": "Low",
+    "symptoms": ["No visible disease symptoms"],
+    "recommendation": "No action needed.",
+    "prevention": "Regular monitoring and good practices."
+  },
+
+  "wheat_brown_rust": {
+    "disease": "Brown rust",
+    "severity": "Medium",
+    "symptoms": ["Reddish-brown pustules on leaves"],
+    "recommendation": "Use resistant varieties and apply fungicides if severe.",
+    "prevention": "Rotate crops and choose resistant cultivars."
+  },
+  "wheat_healthy": {
+    "disease": "Healthy",
+    "severity": "Low",
+    "symptoms": ["No visible disease symptoms"],
+    "recommendation": "Monitor and maintain good crop management.",
+    "prevention": "Balanced fertilization and good practices."
+  },
+  "wheat_septoria": {
+    "disease": "Septoria",
+    "severity": "Medium",
+    "symptoms": ["Leaf blotches and premature senescence"],
+    "recommendation": "Plant resistant varieties and apply fungicides when needed.",
+    "prevention": "Crop rotation and residue management."
+  },
+  "wheat_yellow_rust": {
+    "disease": "Yellow rust",
+    "severity": "High",
+    "symptoms": ["Yellowish pustules on leaves"],
+    "recommendation": "Use resistant varieties and apply fungicides as directed.",
+    "prevention": "Monitor and use tolerant cultivars."
+  }
+}

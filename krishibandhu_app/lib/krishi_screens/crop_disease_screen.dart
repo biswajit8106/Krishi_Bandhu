@@ -698,17 +698,133 @@ class _CropDiseaseScreenState extends State<CropDiseaseScreen> {
     }
   }
 
-  void _showHistoryDialog() {
+  Future<void> _showHistoryDialog() async {
+    // show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    final res = await apiService.getDiseaseHistory(widget.token);
+
+    // hide loading
+    Navigator.pop(context);
+
+    // Debug: print response for troubleshooting
+    try {
+      // ignore: avoid_print
+      print('[CropDiseaseScreen] getDiseaseHistory response: ' + res.toString());
+    } catch (_) {}
+
+    // If API returned a failure shape like {success: false, msg: ...}, show the message
+    if (res is Map && res.containsKey('success') && res['success'] == false) {
+      final msg = (res['msg'] is String) ? res['msg'] : 'Failed to load history.';
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Scan History', style: GoogleFonts.poppins()),
+          content: Text(msg, style: GoogleFonts.poppins()),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+          ],
+        ),
+      );
+      return;
+    }
+
+    if (res == null || res is! Map) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Scan History', style: GoogleFonts.poppins()),
+          content: Text('Failed to load history.', style: GoogleFonts.poppins()),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+          ],
+        ),
+      );
+      return;
+    }
+
+    final List preds = (res['predictions'] is List) ? res['predictions'] : [];
+
+    if (preds.isEmpty) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Scan History', style: GoogleFonts.poppins()),
+          content: Text('No previous scans found.', style: GoogleFonts.poppins()),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+          ],
+        ),
+      );
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Scan History', style: GoogleFonts.poppins()),
-        content: Text('No previous scans found.', style: GoogleFonts.poppins()),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 400,
+          child: ListView.builder(
+            itemCount: preds.length,
+            itemBuilder: (context, index) {
+              final p = preds[index];
+              // Parse confidence and convert to percentage if needed
+              double confidence = 0.0;
+              if (p['confidence'] is num) {
+                confidence = (p['confidence'] as num).toDouble();
+              } else if (p['confidence'] is String) {
+                confidence = double.tryParse(p['confidence']) ?? 0.0;
+              }
+              // If confidence is in 0-1 range, convert to percentage
+              if (confidence <= 1.0 && confidence > 0.0) {
+                confidence = confidence * 100.0;
+              }
+              
+              return ListTile(
+                title: Text('${p['crop_type'] ?? ''} — ${p['predicted_class'] ?? ''}'),
+                subtitle: Text('Confidence: ${confidence.toStringAsFixed(1)}%\n${p['created_at'] ?? ''}'),
+                isThreeLine: true,
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: Text('Prediction Details', style: GoogleFonts.poppins()),
+                      content: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Crop: ${p['crop_type'] ?? ''}', style: GoogleFonts.poppins()),
+                            const SizedBox(height: 8),
+                            Text('Predicted: ${p['predicted_class'] ?? ''}', style: GoogleFonts.poppins()),
+                            const SizedBox(height: 8),
+                            Text('Confidence: ${confidence.toStringAsFixed(1)}%', style: GoogleFonts.poppins()),
+                            const SizedBox(height: 8),
+                            Text('Recommendation:\n${p['recommendation'] ?? ''}', style: GoogleFonts.poppins()),
+                            const SizedBox(height: 8),
+                            Text('Prevention:\n${p['prevention'] ?? ''}', style: GoogleFonts.poppins()),
+                            const SizedBox(height: 8),
+                            Text('Scanned at: ${p['created_at'] ?? ''}', style: GoogleFonts.poppins()),
+                          ],
+                        ),
+                      ),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
           ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
         ],
       ),
     );

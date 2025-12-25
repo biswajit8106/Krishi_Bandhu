@@ -132,7 +132,11 @@ def create_schedule(payload: dict = Body(...), user: User = Depends(get_current_
 
 @router.get("/irrigation/events")
 def list_events(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    items = db.query(irrigation_models.IrrigationEvent).filter_by(user_id=user.id).order_by(irrigation_models.IrrigationEvent.timestamp.desc()).limit(20).all()
+    # Only fetch irrigation-related events, exclude disease prediction events
+    items = db.query(irrigation_models.IrrigationEvent).filter(
+        irrigation_models.IrrigationEvent.user_id == user.id,
+        irrigation_models.IrrigationEvent.event_type != "prediction_saved"
+    ).order_by(irrigation_models.IrrigationEvent.timestamp.desc()).limit(20).all()
     out = []
     for e in items:
         out.append({"id": e.id, "type": e.event_type, "details": e.details, "water_liters": e.water_liters, "timestamp": e.timestamp.isoformat()})

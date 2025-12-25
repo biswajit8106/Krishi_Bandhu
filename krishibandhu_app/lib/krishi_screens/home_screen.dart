@@ -29,12 +29,25 @@ class _HomeScreenState extends State<HomeScreen> {
   final ApiService apiService = ApiService();
   Map<String, dynamic>? weatherData;
   Map<String, dynamic>? userProfile;
+  List<dynamic> _recentActivities = [];
 
   @override
   void initState() {
     super.initState();
     _fetchUserProfile();
     _fetchWeather();
+    _loadRecentActivity();
+  }
+
+  Future<void> _loadRecentActivity() async {
+    try {
+      final res = await apiService.getRecentActivities(widget.token);
+      if (res != null && res is Map && res.containsKey('activities')) {
+        setState(() {
+          _recentActivities = List<dynamic>.from(res['activities'] ?? []);
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _fetchUserProfile() async {
@@ -390,31 +403,50 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
-              children: [
-                _buildActivityItem(
-                  icon: Icons.eco,
-                  title: 'Crop scan completed',
-                  subtitle: 'Rice field - Diseases detected',
-                  time: '1 hours ago',
-                  color: AppTheme.successColor,
-                ),
-                const Divider(),
-                _buildActivityItem(
-                  icon: Icons.water_drop,
-                  title: 'Irrigation scheduled',
-                  subtitle: 'Field  - 30 minutes',
-                  time: 'Long time ago',
-                  color: AppTheme.infoColor,
-                ),
-                const Divider(),
-                _buildActivityItem(
-                  icon: Icons.wb_sunny,
-                  title: 'Weather Forcast',
-                  subtitle: 'Rain expected tomorrow',
-                  time: '12 hours ago',
-                  color: AppTheme.warningColor,
-                ),
-              ],
+              children: _recentActivities.isEmpty
+                  ? [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: Text('No recent activity', style: GoogleFonts.poppins()),
+                      )
+                    ]
+                  : _recentActivities.map((act) {
+                      IconData icon = Icons.event;
+                      Color color = AppTheme.infoColor;
+                      String title = act['title'] ?? '';
+                      String subtitle = act['details'] ?? '';
+                      String time = act['timestamp'] ?? '';
+
+                      switch (act['type']) {
+                        case 'irrigation':
+                          icon = Icons.water_drop;
+                          color = AppTheme.infoColor;
+                          break;
+                        case 'assistant':
+                          icon = Icons.smart_toy;
+                          color = AppTheme.primaryColor;
+                          break;
+                        case 'disease':
+                          icon = Icons.eco;
+                          color = AppTheme.errorColor;
+                          break;
+                        default:
+                          icon = Icons.event;
+                      }
+
+                      return Column(
+                        children: [
+                          _buildActivityItem(
+                            icon: icon,
+                            title: title,
+                            subtitle: subtitle,
+                            time: time,
+                            color: color,
+                          ),
+                          const Divider(),
+                        ],
+                      );
+                    }).toList(),
             ),
           ),
         ),

@@ -4,6 +4,7 @@ import base64
 import os
 import csv
 import re
+import json
 from ultralytics import YOLO
 
 class CropDiseaseService:
@@ -11,8 +12,10 @@ class CropDiseaseService:
         self.models = {}
         self.class_names = {}
         self.recommendations = {}
+        self.analysis = {}
         self._load_models()
         self._load_recommendations()
+        self._load_analysis()
 
     def _load_models(self):
         # Base path for YOLO models
@@ -108,6 +111,40 @@ class CropDiseaseService:
         except Exception as e:
             print(f"Failed to load recommendations CSV: {e}")
 
+    def _load_analysis(self):
+        """Load disease analysis metadata (severity, symptoms, optional recs) from JSON file."""
+        try:
+            json_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'disease_analysis.json')
+            json_path = os.path.abspath(json_path)
+            if not os.path.exists(json_path):
+                print(f"Disease analysis JSON not found at {json_path}")
+                return
+
+            with open(json_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+
+            def normalize(s: str) -> str:
+                s = s or ''
+                s = s.strip().lower()
+                s = re.sub(r'[^a-z0-9]+', '_', s)
+                s = re.sub(r'_+', '_', s).strip('_')
+                return s
+
+            for key, val in data.items():
+                if not key:
+                    continue
+                nkey = normalize(key)
+                self.analysis[nkey] = val
+
+                # also add some common alternative lookup keys from the disease field
+                disease_name = (val.get('disease') or '')
+                if disease_name:
+                    self.analysis[normalize(disease_name)] = val
+
+            print(f"Loaded {len(self.analysis)} analysis entries from JSON")
+        except Exception as e:
+            print(f"Failed to load disease analysis JSON: {e}")
+
     def predict(self, crop_type, image_data):
         if crop_type not in self.models:
             return {"error": f"YOLO model for crop '{crop_type}' not available"}
@@ -139,14 +176,25 @@ class CropDiseaseService:
 
                     # Attach recommendation and prevention if available
                     rec = self._get_recommendation_for(predicted_class, crop_type)
+                    analysis = self._get_analysis_for(predicted_class, crop_type)
 
                     response = {
                         "predicted_class": predicted_class,
                         "confidence": top_confidence,
                         "probabilities": prob_dict,
                     }
+
+                    # merge recommendation/prevention from CSV-first, then analysis JSON if missing
                     if rec:
                         response.update(rec)
+
+                    # analysis may contain severity and symptoms and optional recommendation/prevention
+                    if analysis:
+                        # do not overwrite recommendation/prevention if already present
+                        for k, v in analysis.items():
+                            if k in ('recommendation', 'prevention') and response.get(k):
+                                continue
+                            response[k] = v
 
                     return response
                 else:
@@ -197,6 +245,41 @@ class CropDiseaseService:
 
         # No recommendation found
         print(f"No recommendation mapping found for disease '{disease_name}' (normalized '{norm}') with crop '{crop_type}'")
+        return None
+
+    def _get_analysis_for(self, disease_name: str, crop_type: str):
+        if not disease_name:
+            return None
+
+        def normalize(s: str) -> str:
+            s = s or ''
+            s = s.strip().lower()
+            s = re.sub(r'[^a-z0-9]+', '_', s)
+            s = re.sub(r'_+', '_', s).strip('_')
+            return s
+
+        raw = disease_name
+        norm = normalize(raw)
+        crop_norm = normalize(crop_type)
+
+        # try exact and normalized lookups
+        candidates = [raw, raw.lower(), raw.replace(' ', '_'), raw.replace(' ', '_').lower(), norm,
+                      f"{crop_type}_{raw}", f"{crop_norm}_{norm}"]
+
+        for key in candidates:
+            k = normalize(key)
+            if k in self.analysis:
+                return self.analysis[k]
+
+        # fallback: substring match
+        for k, v in self.analysis.items():
+            if not k:
+                continue
+            if norm and norm in k:
+                return v
+            if k in norm:
+                return v
+
         return None
 
 # Singleton instance
