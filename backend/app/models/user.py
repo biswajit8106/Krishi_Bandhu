@@ -1,5 +1,5 @@
 # backend/app/models/user.py
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, Boolean
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -17,6 +17,8 @@ class User(Base):
     language = Column(String(50))
     role = Column(String(50))  # e.g., 'farmer', 'expert', 'admin'
     profile_image = Column(String(255), nullable=True)  # Path to profile image
+    email_verified = Column(Boolean, default=False)
+    phone_verified = Column(Boolean, default=False)
 
     # Relationship with assistant queries
     assistant_queries = relationship("AssistantQuery", back_populates="user")

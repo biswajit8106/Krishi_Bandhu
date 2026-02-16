@@ -13,6 +13,7 @@ from app import database, config
 from app.models.user import User
 from app.models.token import Token
 from app.utils.auth_utils import get_current_user
+from sqlalchemy.exc import ProgrammingError, SQLAlchemyError
 
 class SignupRequest(BaseModel):
     name: str
@@ -42,26 +43,79 @@ def generate_token():
 # ---------------- ROUTES ----------------
 @router.post("/signup")
 def signup(request: SignupRequest, db: Session = Depends(database.get_db)):
-    if db.query(User).filter(User.phone == request.phone).first():
-        raise HTTPException(status_code=400, detail="Phone already registered")
-    if request.email and db.query(User).filter(User.email == request.email).first():
-        raise HTTPException(status_code=400, detail="Email already registered")
-    hashed_pw = get_password_hash(request.password)
-    new_user = User(
-        name=request.name,
-        phone=request.phone,
-        email=request.email,
-        password=hashed_pw,
-        state=request.state,
-        district=request.district,
-        location=request.location,
-        language=request.language,
-        role="farmer"
-    )
-    db.add(new_user)
+    try:
+        if db.query(User).filter(User.phone == request.phone).first():
+            raise HTTPException(status_code=400, detail="Phone already registered")
+        if request.email and db.query(User).filter(User.email == request.email).first():
+            raise HTTPException(status_code=400, detail="Email already registered")
+        hashed_pw = get_password_hash(request.password)
+        new_user = User(
+            name=request.name,
+            phone=request.phone,
+            email=request.email,
+            password=hashed_pw,
+            state=request.state,
+            district=request.district,
+            location=request.location,
+            language=request.language,
+            role="farmer"
+        )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+    except ProgrammingError:
+        # Likely a schema mismatch (missing column) — provide a friendly message
+        raise HTTPException(status_code=400, detail="Please enter correct email and phone")
+    except SQLAlchemyError:
+        # Generic DB error
+        raise HTTPException(status_code=500, detail="Database error during signup")
+    # Create verification tokens for email and phone (if provided)
+    verification_tokens = {}
+    if request.email:
+        email_token = generate_token()
+        email_expires = datetime.utcnow() + timedelta(days=1)
+        db.add(Token(token=email_token, user_id=new_user.id, expires_at=email_expires, token_type="verify_email"))
+        verification_tokens["verify_email_token"] = email_token
+
+    if request.phone:
+        phone_token = generate_token()
+        phone_expires = datetime.utcnow() + timedelta(days=1)
+        db.add(Token(token=phone_token, user_id=new_user.id, expires_at=phone_expires, token_type="verify_phone"))
+        verification_tokens["verify_phone_token"] = phone_token
+
     db.commit()
-    db.refresh(new_user)
-    return {"msg": "User created successfully"}
+
+    # NOTE: In production, send these tokens via SMS/email instead of returning them.
+    return {"msg": "User created successfully", "verification": verification_tokens}
+
+class VerifyRequest(BaseModel):
+    token: str
+
+
+@router.post("/verify-email")
+def verify_email(request: VerifyRequest, db: Session = Depends(database.get_db)):
+    token_entry = db.query(Token).filter(Token.token == request.token, Token.token_type == "verify_email").first()
+    if not token_entry or token_entry.expires_at < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Invalid or expired verification token")
+    user = token_entry.user
+    user.email_verified = True
+    # remove all verify_email tokens for this user
+    db.query(Token).filter(Token.user_id == user.id, Token.token_type == "verify_email").delete()
+    db.commit()
+    return {"msg": "Email verified successfully"}
+
+
+@router.post("/verify-phone")
+def verify_phone(request: VerifyRequest, db: Session = Depends(database.get_db)):
+    token_entry = db.query(Token).filter(Token.token == request.token, Token.token_type == "verify_phone").first()
+    if not token_entry or token_entry.expires_at < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Invalid or expired verification token")
+    user = token_entry.user
+    user.phone_verified = True
+    # remove all verify_phone tokens for this user
+    db.query(Token).filter(Token.user_id == user.id, Token.token_type == "verify_phone").delete()
+    db.commit()
+    return {"msg": "Phone verified successfully"}
 
 @router.post("/login")
 def login(request: LoginRequest, db: Session = Depends(database.get_db)):

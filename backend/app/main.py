@@ -10,6 +10,13 @@ from . import models  # Import all models to configure mappers
 
 # DB tables: create all known models
 database.Base.metadata.create_all(bind=database.engine)
+try:
+    # ensure any new columns for users exist (helpful during deployments without alembic)
+    database.ensure_user_verification_columns()
+except Exception:
+    # don't crash startup for migration helper failures; log to stdout
+    import traceback
+    traceback.print_exc()
 
 # CORS
 origins = ["*"]  # for dev, allow all origins
