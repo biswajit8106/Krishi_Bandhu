@@ -188,6 +188,6 @@ This is a college project developed by students. To contribute:
 - Open-source community for amazing tools and libraries
 - Weather APIs and AI providers for data and intelligence
 
----
+----
 
 *Made with ❤️ for farmers worldwide*
