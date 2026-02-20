@@ -190,4 +190,4 @@ This is a college project developed by students. To contribute:
 
 ----
 
-*Made with ❤️ for farmers worldwide*
+*Made with love for farmers worldwide*
