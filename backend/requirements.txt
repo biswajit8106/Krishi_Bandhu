@@ -22,3 +22,4 @@ groq
 speechrecognition
 langdetect
 pydub
+huggingface_hub
