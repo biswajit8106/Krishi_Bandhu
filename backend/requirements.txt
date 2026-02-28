@@ -2,6 +2,7 @@ fastapi
 uvicorn
 sqlalchemy
 mysql-connector-python
+PyMySQL
 python-multipart
 pydantic
 joblib
@@ -23,3 +24,4 @@ speechrecognition
 langdetect
 pydub
 huggingface_hub
+
