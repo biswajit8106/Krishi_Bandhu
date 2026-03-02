@@ -7,7 +7,7 @@ import '../helpers/language_helper.dart';
 // Define the backend base URL
 // const String baseUrl = "http://10.0.2.2:8000"; // For Android emulator
 const String baseUrl =
-    "http://10.97.182.103:9999"; // For Web/PC and mobile devices on same network
+    "https://krishi-bandhu-rkrt.onrender.com"; // For Web/PC and mobile devices on same network
 // const String localBaseUrl = "https://10.15.83.103:9999"; // For accessing local server over HTTPS
 // const String baseUrl = "http://10.164.152.146:9999"; // For local development
 
