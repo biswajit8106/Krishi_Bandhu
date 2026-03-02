@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()  # Load environment variables from .env file
 
 # backend/app/config.py
-DATABASE_URL = os.getenv("DATABASE_URL", "mysql://root:JPqmUZPtTZvhaouKxHVhFsvJTJIpSPvI@centerbeam.proxy.rlwy.net:39637/railway")
+DATABASE_URL = os.getenv("DATABASE_URL", "mysql+pymysql://user:password@localhost:3306/agrobrain")
 WEATHER_API_KEY = os.getenv("WEATHER_API_KEY", "270746a8e8a24a21bb190609250609")
 SECRET_KEY = os.getenv("SECRET_KEY", "your_secret_key")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
