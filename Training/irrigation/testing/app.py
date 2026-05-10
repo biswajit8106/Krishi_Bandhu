@@ -62,7 +62,7 @@ def plot_irrigation(water_list):
     st.line_chart(water_list)
 
 # --------------------- Streamlit App --------------------- #
-st.title("🌾 KrishiBandhu AI – Irrigation Predictor")
+st.title(" KrishiBandhu AI Irrigation Predictor")
 
 # Sidebar inputs
 district = st.selectbox("Select District", le_district.classes_)
@@ -85,5 +85,5 @@ if st.button("Predict Irrigation"):
     st.subheader("💧 Predicted Daily Water Requirement (L/day)")
     plot_irrigation(water_list)
 
-    total_water = sum(water_list)*0.85  # assuming 85% irrigation efficiency
-    st.success(f"✅ Optimal Water Required: {total_water:.2f} Liters over {days} days")
+    total_water = sum(water_list)*0.85 
+    st.success(f"Optimal Water Required: {total_water:.2f} Liters over {days} days")

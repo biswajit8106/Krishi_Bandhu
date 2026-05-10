@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 import '../widgets/weather_info_card.dart';
 import '../widgets/bottom_nav_bar.dart';
+import '../widgets/iot_dashboard_widget.dart';
 import '../services/api_service.dart';
 
 class IrrigationScreen extends StatefulWidget {
@@ -15,12 +16,16 @@ class IrrigationScreen extends StatefulWidget {
   State<IrrigationScreen> createState() => _IrrigationScreenState();
 }
 
-class _IrrigationScreenState extends State<IrrigationScreen> {
+class _IrrigationScreenState extends State<IrrigationScreen>
+    with TickerProviderStateMixin {
   // dynamic metadata from backend
   List<String> _cropTypes = [];
   List<String> _soilTypes = [];
   List<dynamic> _waterUsage = [];
   List<dynamic> _recentEvents = [];
+
+  // TabController
+  late TabController _tabController;
 
   // Form controllers
   final ApiService api = ApiService();
@@ -36,8 +41,21 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
   final TextEditingController _dayAfterSowingController = TextEditingController(
     text: '1',
   );
+  final TextEditingController _previousIrrigationController = TextEditingController(
+    text: '0',
+  );
+  final TextEditingController _sunlightController = TextEditingController(
+    text: '8',
+  );
+  final TextEditingController _windSpeedController = TextEditingController(
+    text: '5',
+  );
+  final TextEditingController _humidityController = TextEditingController(
+    text: '60',
+  );
   String? _selectedCropType;
   String? _selectedSoilType;
+  String? _selectedSeason;
 
   bool _isLoading = false;
   String? _predictionText;
@@ -55,6 +73,8 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
   static const String _dayAfterSowingKey = 'day_after_sowing';
   static const String _districtKey = 'district';
   static const String _villageKey = 'village';
+  static const String _seasonKey = 'season';
+  static const String _previousIrrigationKey = 'previous_irrigation_mm';
 
   Future<void> _loadIrrigationMetadata() async {
     final meta = await api.getIrrigationMetadata();
@@ -90,12 +110,17 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
 
   @override
   void dispose() {
+    _tabController.dispose();
     _districtController.dispose();
     _villageController.dispose();
     _areaController.dispose();
     _temperatureController.dispose();
     _rainfallController.dispose();
     _dayAfterSowingController.dispose();
+    _previousIrrigationController.dispose();
+    _sunlightController.dispose();
+    _windSpeedController.dispose();
+    _humidityController.dispose();
     super.dispose();
   }
 
@@ -144,12 +169,65 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
     } catch (_) {}
   }
 
+  Future<void> _fetchIoTAndWeatherData() async {
+    try {
+      // Fetch IoT real-time sensor data
+      final iotData = await api.getIotRealtimeData(widget.token);
+      if (iotData.containsKey('data')) {
+        final data = iotData['data'];
+        setState(() {
+          if (data['temperature'] != null) {
+            _temperatureController.text = data['temperature'].toStringAsFixed(1);
+          }
+          if (data['humidity'] != null) {
+            _humidityController.text = data['humidity'].toStringAsFixed(1);
+          }
+        });
+      }
+    } catch (_) {}
+
+    // Fetch weather data
+    await _fetchWeather();
+
+    try {
+      // Also fetch sunlight and wind speed from weather API
+      final weatherData = await api.predictClimate(widget.token);
+      if (weatherData.containsKey('forecast')) {
+        final forecast = weatherData['forecast'];
+        if (forecast is List && forecast.isNotEmpty) {
+          final today = forecast[0];
+          if (today['sunlight_hours'] != null) {
+            _sunlightController.text = today['sunlight_hours'].toStringAsFixed(1);
+          }
+          if (today['wind_speed'] != null) {
+            _windSpeedController.text = today['wind_speed'].toStringAsFixed(1);
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      appBar: AppBar(title: const Text('Smart Irrigation')),
-      body: _buildDashboard(),
+      appBar: AppBar(
+        title: const Text('Smart Irrigation'),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'IoT Dashboard'),
+            Tab(text: 'Smart Prediction'),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          IotDashboardWidget(token: widget.token),
+          _buildDashboard(),
+        ],
+      ),
       bottomNavigationBar: BottomNavBar(currentIndex: 3, token: widget.token),
     );
   }
@@ -237,30 +315,141 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
               decoration: const InputDecoration(labelText: 'Soil Type'),
             ),
             const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              value: ['Kharif', 'Rabi', 'Summer'].contains(_selectedSeason)
+                  ? _selectedSeason
+                  : null,
+              items: ['Kharif', 'Rabi', 'Summer']
+                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                  .toList(),
+              onChanged: (v) {
+                setState(() => _selectedSeason = v);
+                _saveData();
+              },
+              decoration: const InputDecoration(labelText: 'Season'),
+            ),
+            const SizedBox(height: 8),
             TextField(
               controller: _areaController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Area (acres)'),
+              decoration: const InputDecoration(labelText: 'Field Area (hectare)'),
             ),
             const SizedBox(height: 8),
             TextField(
-              controller: _temperatureController,
+              controller: _previousIrrigationController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Temperature (°C)'),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _rainfallController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Rainfall (mm)'),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _dayAfterSowingController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Day After Sowing'),
+              decoration: const InputDecoration(labelText: 'Previous Irrigation (mm)'),
             ),
             const SizedBox(height: 12),
+            // Button to fetch IoT and Weather Data
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _fetchIoTAndWeatherData,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Auto-fetch IoT & Weather Data'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue[600],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Sensor Data Section (Auto-populated from IoT)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue[200]!),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Sensor Data (from IoT)',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.blue[900],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _temperatureController,
+                    keyboardType: TextInputType.number,
+                    readOnly: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Temperature (°C)',
+                      suffixText: 'from IoT',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _humidityController,
+                    keyboardType: TextInputType.number,
+                    readOnly: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Humidity (%)',
+                      suffixText: 'from IoT',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Weather Data Section (Auto-populated from Weather API)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange[200]!),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Weather Data (from API)',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.orange[900],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _rainfallController,
+                    keyboardType: TextInputType.number,
+                    readOnly: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Rainfall (mm)',
+                      suffixText: 'from Weather API',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _sunlightController,
+                    keyboardType: TextInputType.number,
+                    readOnly: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Sunlight Hours',
+                      suffixText: 'from Weather API',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _windSpeedController,
+                    keyboardType: TextInputType.number,
+                    readOnly: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Wind Speed (km/h)',
+                      suffixText: 'from Weather API',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -317,11 +506,10 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
   Future<void> _runPrediction() async {
     if (_selectedCropType == null ||
         _selectedSoilType == null ||
+        _selectedSeason == null ||
         _areaController.text.trim().isEmpty ||
-        _temperatureController.text.trim().isEmpty ||
-        _rainfallController.text.trim().isEmpty ||
-        _dayAfterSowingController.text.trim().isEmpty) {
-      setState(() => _predictionText = 'Please fill required fields');
+        _previousIrrigationController.text.trim().isEmpty) {
+      setState(() => _predictionText = 'Please fill required fields (Crop, Soil, Season, Area, Previous Irrigation)');
       return;
     }
 
@@ -335,10 +523,9 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
       'village': _villageController.text.trim(),
       'crop_type': _selectedCropType,
       'soil_type': _selectedSoilType,
-      'area': double.tryParse(_areaController.text) ?? 1.0,
-      'temperature': double.tryParse(_temperatureController.text) ?? 28.0,
-      'rainfall': double.tryParse(_rainfallController.text) ?? 5.0,
-      'day_after_sowing': int.tryParse(_dayAfterSowingController.text) ?? 1,
+      'season': _selectedSeason,
+      'field_area_hectare': double.tryParse(_areaController.text) ?? 1.0,
+      'previous_irrigation_mm': double.tryParse(_previousIrrigationController.text) ?? 0.0,
     };
 
     final res = await api.predictIrrigation(widget.token, body);
@@ -357,7 +544,7 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
       _saveData();
     } else if (res.containsKey('prediction')) {
       setState(() {
-        _predictionText = jsonEncode(res['prediction']);
+        _predictionText = 'Prediction: ${jsonEncode(res['prediction'])}';
         _dayWiseRequirements = List<dynamic>.from(
           res['day_wise_requirements'] ?? [],
         );
@@ -367,6 +554,19 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
       setState(() {
         _predictionText = res['msg'] ?? 'Prediction failed';
         _dayWiseRequirements = [];
+      });
+      _saveData();
+    } else if (res.containsKey('success') && res['success'] == true) {
+      // Handle new response format with sensor data
+      setState(() {
+        final prediction = res['prediction'];
+        _predictionText = 'Prediction: $prediction liters\n\nSensor Data:\n' +
+            'Soil Moisture: ${res['sensor_data']?['soil_moisture']?.toStringAsFixed(1)}%\n' +
+            'Temperature: ${res['sensor_data']?['temperature']?.toStringAsFixed(1)}°C\n' +
+            'Humidity: ${res['sensor_data']?['humidity']?.toStringAsFixed(1)}%';
+        _dayWiseRequirements = List<dynamic>.from(
+          res['day_wise_requirements'] ?? [],
+        );
       });
       _saveData();
     } else {
@@ -646,6 +846,7 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     // Add listeners to controllers for saving data on changes
     _districtController.addListener(_saveData);
     _villageController.addListener(_saveData);
@@ -653,6 +854,7 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
     _temperatureController.addListener(_saveData);
     _rainfallController.addListener(_saveData);
     _dayAfterSowingController.addListener(_saveData);
+    _previousIrrigationController.addListener(_saveData);
     // Load data
     _loadSavedData();
     _fetchProfile();
@@ -673,6 +875,7 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
       }
       _selectedCropType = prefs.getString(_selectedCropTypeKey);
       _selectedSoilType = prefs.getString(_selectedSoilTypeKey);
+      _selectedSeason = prefs.getString(_seasonKey);
       _districtController.text = prefs.getString(_districtKey) ?? '';
       _villageController.text = prefs.getString(_villageKey) ?? '';
       _areaController.text = prefs.getString(_areaKey) ?? '';
@@ -680,6 +883,8 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
       _rainfallController.text = prefs.getString(_rainfallKey) ?? '5';
       _dayAfterSowingController.text =
           prefs.getString(_dayAfterSowingKey) ?? '1';
+      _previousIrrigationController.text =
+          prefs.getString(_previousIrrigationKey) ?? '0';
     });
   }
 
@@ -692,11 +897,13 @@ class _IrrigationScreenState extends State<IrrigationScreen> {
     );
     await prefs.setString(_selectedCropTypeKey, _selectedCropType ?? '');
     await prefs.setString(_selectedSoilTypeKey, _selectedSoilType ?? '');
+    await prefs.setString(_seasonKey, _selectedSeason ?? '');
     await prefs.setString(_districtKey, _districtController.text);
     await prefs.setString(_villageKey, _villageController.text);
     await prefs.setString(_areaKey, _areaController.text);
     await prefs.setString(_temperatureKey, _temperatureController.text);
     await prefs.setString(_rainfallKey, _rainfallController.text);
     await prefs.setString(_dayAfterSowingKey, _dayAfterSowingController.text);
+    await prefs.setString(_previousIrrigationKey, _previousIrrigationController.text);
   }
 }

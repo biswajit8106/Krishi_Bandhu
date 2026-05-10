@@ -6,10 +6,10 @@ import '../helpers/language_helper.dart';
 
 // Define the backend base URL
 // const String baseUrl = "http://10.0.2.2:8000"; // For Android emulator
-const String baseUrl =
-    "https://krishi-bandhu-rkrt.onrender.com"; // For Web/PC and mobile devices on same network
+// const String baseUrl =
+//     "https://krishi-bandhu-rkrt.onrender.com"; // For Web/PC and mobile devices on same network
 // const String localBaseUrl = "https://krishi-bandhu-rkrt.onrender.com/"; // For accessing local server over HTTPS
-// const String baseUrl = "http://10.164.152.146:9999"; // For local development
+const String baseUrl = "http://10.153.10.103:9999"; // For local development
 
 class ApiService {
   final http.Client client = http.Client();
@@ -655,6 +655,58 @@ class ApiService {
       };
     } catch (e) {
       return {"success": false, "msg": "An error occurred: ${e.toString()}"};
+    }
+  }
+
+  // IoT Real-Time Data Fetching
+  Future<Map<String, dynamic>> getIotRealtimeData(String token) async {
+    try {
+      final url = Uri.parse("$baseUrl/irrigation/iot/realtime");
+      final response = await client
+          .get(url, headers: {"Authorization": "Bearer $token"})
+          .timeout(_timeoutDuration);
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        return {
+          "success": false,
+          "msg": "Failed to fetch IoT data",
+          "sensors": {},
+        };
+      }
+    } catch (e) {
+      return {
+        "success": false,
+        "msg": e.toString(),
+        "sensors": {},
+      };
+    }
+  }
+
+  // AI Irrigation Prediction based on real-time IoT data
+  Future<Map<String, dynamic>> getAiIrrigationPrediction(String token) async {
+    try {
+      final url = Uri.parse("$baseUrl/irrigation/iot/predict");
+      final response = await client
+          .get(url, headers: {"Authorization": "Bearer $token"})
+          .timeout(_timeoutDuration);
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        return {
+          "recommendation": "Unable to fetch prediction",
+          "urgency": "normal",
+          "reason": "IoT data unavailable",
+        };
+      }
+    } catch (e) {
+      return {
+        "recommendation": "System error",
+        "urgency": "normal",
+        "reason": e.toString(),
+      };
     }
   }
 }

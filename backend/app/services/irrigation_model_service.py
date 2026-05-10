@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 class IrrigationNN(nn.Module):
-    def __init__(self, input_size):
+    def __init__(self, input_size, num_classes=3):
         super(IrrigationNN, self).__init__()
         self.model = nn.Sequential(
             nn.Linear(input_size, 128),
@@ -18,7 +18,7 @@ class IrrigationNN(nn.Module):
             nn.ReLU(),
             nn.Linear(64, 32),
             nn.ReLU(),
-            nn.Linear(32, 1)
+            nn.Linear(32, num_classes)
         )
 
     def forward(self, x):
@@ -30,19 +30,20 @@ class IrrigationModelService:
         """Load the PyTorch model and preprocessors."""
         model_dir = os.path.dirname(model_path)
         le_crop_file = os.path.join(model_dir, 'le_crop.pkl')
-        le_district_file = os.path.join(model_dir, 'le_district.pkl')
         le_soil_file = os.path.join(model_dir, 'le_soil.pkl')
+        le_season_file = os.path.join(model_dir, 'le_season.pkl')
+        le_target_file = os.path.join(model_dir, 'le_target.pkl')
         scaler_X_file = os.path.join(model_dir, 'scaler_X.pkl')
-        scaler_y_file = os.path.join(model_dir, 'scaler_y.pkl')
 
         try:
             # Load state_dict
             state_dict = torch.load(model_path, map_location=torch.device('cpu'))
-            input_size = 7  # Based on the state_dict shape [128, 7]
-            self.model = IrrigationNN(input_size)
+            input_size = 11  # Matches training: 3 encoded categoricals + 8 continuous features
+            num_classes = 3  # Classification output: 3 irrigation need classes
+            self.model = IrrigationNN(input_size, num_classes)
             self.model.load_state_dict(state_dict)
             self.model.eval()
-            logger.info("Loaded PyTorch model successfully.")
+            logger.info("Loaded PyTorch model successfully with input_size=%d, num_classes=%d", input_size, num_classes)
         except Exception as e:
             logger.exception("Failed to load PyTorch model: %s", e)
             self.model = None
@@ -50,57 +51,71 @@ class IrrigationModelService:
         try:
             import joblib
             self.le_crop = joblib.load(le_crop_file)
-            self.le_district = joblib.load(le_district_file)
             self.le_soil = joblib.load(le_soil_file)
+            self.le_season = joblib.load(le_season_file) if os.path.exists(le_season_file) else None
+            self.le_target = joblib.load(le_target_file) if os.path.exists(le_target_file) else None
             self.scaler_X = joblib.load(scaler_X_file)
-            self.scaler_y = joblib.load(scaler_y_file)
             logger.info("Loaded preprocessors successfully.")
         except Exception as e:
             logger.exception("Failed to load preprocessors: %s", e)
-            self.le_crop = self.le_district = self.le_soil = self.scaler_X = self.scaler_y = None
+            self.le_crop = self.le_soil = self.le_season = self.le_target = self.scaler_X = None
 
     def predict(self, input_data: dict):
-        """Predict using the loaded PyTorch model if available; otherwise use a simple
-        rule-based estimator based on crop, soil and recent precipitation.
+        """Predict irrigation need using the loaded PyTorch model if available; 
+        otherwise use a rule-based estimator.
 
-        Returns a dictionary with 'liters_required', 'units', etc.
+        Returns a dictionary with 'irrigation_need' (classification: 'Low'/'Medium'/'High'), 
+        'liters_required', 'units', etc.
         """
-        if self.model is not None and self.le_crop is not None and self.scaler_X is not None and self.scaler_y is not None:
+        # Check if all required preprocessors are available for ML model
+        has_all_preprocessors = (
+            self.model is not None 
+            and self.le_crop is not None 
+            and self.le_soil is not None
+            and self.le_season is not None
+            and self.le_target is not None
+            and self.scaler_X is not None
+        )
+        
+        if has_all_preprocessors:
             try:
-                # Encode categorical variables
-                district = input_data.get('district') or 'Unknown'
+                # Extract and encode categorical variables
                 crop_type = input_data.get('crop_type') or 'Unknown'
                 soil_type = input_data.get('soil_type') or 'Unknown'
+                season = input_data.get('season') or 'Unknown'
                 area = float(input_data.get('area') or 1.0)
 
-                # Encode using label encoders
-                district_encoded = self.le_district.transform([district])[0] if hasattr(self.le_district, 'classes_') and district in self.le_district.classes_ else -1
-                crop_encoded = self.le_crop.transform([crop_type])[0] if hasattr(self.le_crop, 'classes_') and crop_type in self.le_crop.classes_ else -1
-                soil_encoded = self.le_soil.transform([soil_type])[0] if hasattr(self.le_soil, 'classes_') and soil_type in self.le_soil.classes_ else -1
+                # Encode categorical features
+                crop_encoded = self.le_crop.transform([crop_type])[0] if crop_type in self.le_crop.classes_ else 0
+                soil_encoded = self.le_soil.transform([soil_type])[0] if soil_type in self.le_soil.classes_ else 0
+                season_encoded = self.le_season.transform([season])[0] if season in self.le_season.classes_ else 0
 
-                # Get weather data for temperature and rainfall
-                weather = input_data.get('weather') or {}
-                temperature = 28.0  # default
-                rainfall = 5.0  # default
-                try:
-                    forecast = weather.get('forecast') if isinstance(weather, dict) else None
-                    if forecast and isinstance(forecast, list) and len(forecast) > 0:
-                        day_weather = forecast[0]
-                        if 'temperature' in day_weather:
-                            temperature = float(day_weather['temperature'])
-                        if 'precipitation' in day_weather:
-                            rainfall = float(day_weather['precipitation'])
-                    else:
-                        if 'temperature' in weather:
-                            temperature = float(weather['temperature'])
-                        if 'precipitation' in weather:
-                            rainfall = float(weather['precipitation'])
-                except Exception:
-                    pass
+                # Extract continuous features from input_data
+                soil_moisture = float(input_data.get('soil_moisture', 60.0))
+                temperature = float(input_data.get('temperature', 28.0))
+                humidity = float(input_data.get('humidity', 70.0))
+                rainfall = float(input_data.get('rainfall', 5.0))
+                sunlight_hours = float(input_data.get('sunlight_hours', 8.0))
+                wind_speed = float(input_data.get('wind_speed', 10.0))
+                field_area = float(input_data.get('area', 1.0))
+                previous_irrigation = float(input_data.get('previous_irrigation', 0.0))
 
-                # Prepare input array - match 7 features: district_enc, soil_type_enc, crop_type_enc, day_after_sowing, temperature, rainfall, area
-                day_after_sowing = 1  # assuming first day
-                input_array = np.array([[district_encoded, soil_encoded, crop_encoded, day_after_sowing, temperature, rainfall, area]], dtype=np.float32)
+                # Prepare input array with 11 features matching training data:
+                # [Soil_Type_enc, Crop_Type_enc, Season_enc, Soil_Moisture, Temperature_C, 
+                #  Humidity, Rainfall_mm, Sunlight_Hours, Wind_Speed_kmh, Field_Area_hectare, Previous_Irrigation_mm]
+                input_array = np.array([[
+                    soil_encoded, 
+                    crop_encoded, 
+                    season_encoded,
+                    soil_moisture,
+                    temperature,
+                    humidity,
+                    rainfall,
+                    sunlight_hours,
+                    wind_speed,
+                    field_area,
+                    previous_irrigation
+                ]], dtype=np.float32)
 
                 # Scale input
                 input_scaled = self.scaler_X.transform(input_array)
@@ -108,37 +123,29 @@ class IrrigationModelService:
                 # Convert to tensor and predict
                 input_tensor = torch.tensor(input_scaled, dtype=torch.float32)
                 with torch.no_grad():
-                    pred_scaled = self.model(input_tensor).item()
+                    logits = self.model(input_tensor)
+                    predicted_class = torch.argmax(logits, dim=1).item()
 
-                # Inverse scale to get actual liters
-                pred_actual = self.scaler_y.inverse_transform(np.array([[pred_scaled]])).ravel()[0]
-                # Ensure non-negative prediction
-                pred_actual = max(0, pred_actual)
+                # Decode predicted class back to irrigation need label
+                irrigation_need = self.le_target.inverse_transform([predicted_class])[0]
 
-                # Get weather for precip_percent
-                weather = input_data.get('weather') or {}
-                precip_percent = 0
-                try:
-                    forecast = weather.get('forecast') if isinstance(weather, dict) else None
-                    if forecast and isinstance(forecast, list) and len(forecast) > 0:
-                        p = forecast[0].get('precipitation')
-                        if p is not None:
-                            precip_percent = float(p)
-                    else:
-                        p = weather.get('precipitation') or weather.get('daily_precipitation')
-                        if p is not None:
-                            precip_percent = float(p)
-                except Exception:
-                    precip_percent = 0
+                # Estimate liters based on classification
+                liters_map = {
+                    'Low': area * 1000,
+                    'Medium': area * 2500,
+                    'High': area * 4000
+                }
+                liters_required = liters_map.get(irrigation_need, area * 2500)
 
                 result = {
-                    'liters_required': round(float(pred_actual), 1),
+                    'irrigation_need': irrigation_need,
+                    'liters_required': round(float(liters_required), 1),
                     'units': 'liters',
                     'area': area,
                     'crop': crop_type,
                     'soil': soil_type,
-                    'precip_percent': precip_percent,
-                    'note': 'Predicted by trained PyTorch model.'
+                    'season': season,
+                    'note': 'Predicted by trained PyTorch classification model.'
                 }
                 return result
             except Exception as e:
